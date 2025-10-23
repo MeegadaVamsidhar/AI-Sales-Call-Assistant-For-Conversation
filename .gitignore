@@ -5,6 +5,32 @@
 .env.test.local
 .env.production.local
 
+# Credential and API key files
+**/config/credentials.json
+**/config/keys.json
+**/config/secrets.json
+**/*credentials*
+**/*secrets*
+**/*keys*
+**/livekit.json
+**/deepgram.json
+**/smtp.json
+**/google-credentials.json
+**/service-account.json
+
+# API Keys and tokens
+**/*api-key*
+**/*token*
+**/*auth*
+**/auth.json
+**/tokens.json
+**/api-keys.json
+
+# Database credentials
+**/database.json
+**/db-config.json
+**/mongodb.json
+
 # Python
 __pycache__/
 *.py[cod]
