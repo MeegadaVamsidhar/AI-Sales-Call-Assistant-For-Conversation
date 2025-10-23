@@ -1,2 +1,9 @@
+fastapi
+pydantic
+motor
+pymongo
 python-dotenv
-livekit
+uvicorn
+email-validator
+pandas
+openpyxl

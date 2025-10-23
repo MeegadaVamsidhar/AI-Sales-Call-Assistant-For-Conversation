@@ -1,0 +1,6 @@
+python-dotenv
+livekit
+livekit-agents
+livekit-plugins-deepgram
+livekit-plugins-google
+livekit-plugins-noise-cancellation
