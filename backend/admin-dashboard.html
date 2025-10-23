@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookWise - Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #1e3a8a;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .admin-badge {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #1e3a8a;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .orders-section {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            padding: 25px 30px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .filter-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn:hover, .filter-btn.active {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+        
+        .orders-list {
+            padding: 30px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .order-card {
+            border: 2px solid #f0f0f0;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .order-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+        }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .order-id {
+            font-weight: bold;
+            color: #1e3a8a;
+            font-size: 1.1rem;
+        }
+        
+        .order-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-confirmed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-processing {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .status-shipped {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+        
+        .status-delivered {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .order-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .detail-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .book-title {
+            color: #1e3a8a;
+            font-size: 1.1rem;
+        }
+        
+        .total-amount {
+            color: #059669;
+            font-size: 1.2rem;
+        }
+        
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-accept {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        
+        .btn-accept:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-process {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+        
+        .btn-process:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-ship {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+        }
+        
+        .btn-ship:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.3);
+        }
+        
+        .btn-cancel {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        
+        .btn-cancel:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+        }
+        
+        .btn-view {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+        }
+        
+        .btn-view:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(107, 114, 128, 0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: transform 0.2s ease;
+        }
+        
+        .refresh-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .no-orders {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .no-orders h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .order-date {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .priority-high {
+            border-left: 5px solid #ef4444;
+        }
+        
+        .priority-medium {
+            border-left: 5px solid #f59e0b;
+        }
+        
+        .priority-low {
+            border-left: 5px solid #10b981;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            border-left: 4px solid #10b981;
+        }
+        
+        .notification.error {
+            border-left: 4px solid #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                BookWise Admin Dashboard
+                <span class="admin-badge">Admin Panel</span>
+            </h1>
+            <p>Manage and process customer orders</p>
+            <button class="refresh-btn" onclick="loadOrders()">🔄 Refresh Orders</button>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalOrders">-</div>
+                <div class="stat-label">Total Orders</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="pendingOrders">-</div>
+                <div class="stat-label">Pending Review</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="processingOrders">-</div>
+                <div class="stat-label">Processing</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completedOrders">-</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+        
+        <div class="orders-section">
+            <div class="section-header">
+                Order Management
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterOrders('all')">All</button>
+                    <button class="filter-btn" onclick="filterOrders('pending')">Pending</button>
+                    <button class="filter-btn" onclick="filterOrders('confirmed')">Confirmed</button>
+                    <button class="filter-btn" onclick="filterOrders('processing')">Processing</button>
+                    <button class="filter-btn" onclick="filterOrders('shipped')">Shipped</button>
+                </div>
+            </div>
+            <div class="orders-list" id="ordersList">
+                <div class="loading">Loading orders...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <div id="notificationMessage"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let allOrders = {};
+        let currentFilter = 'all';
+        
+        async function loadOrders() {
+            try {
+                document.getElementById('ordersList').innerHTML = '<div class="loading">Loading orders...</div>';
+                
+                const response = await fetch(`${API_BASE}/orders/all`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                allOrders = data.orders || {};
+                displayOrders();
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                document.getElementById('ordersList').innerHTML = `
+                    <div class="error">
+                        <strong>Error loading orders:</strong> ${error.message}
+                        <br><br>
+                        <strong>Possible solutions:</strong>
+                        <ul style="margin-top: 10px; margin-left: 20px;">
+                            <li>Make sure the backend server is running on port 8000</li>
+                            <li>Check if you have placed any orders through the chat interface</li>
+                            <li>Try refreshing the page</li>
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateStats() {
+            const orders = Object.values(allOrders);
+            const totalCount = orders.length;
+            
+            let pendingCount = 0;
+            let processingCount = 0;
+            let completedCount = 0;
+            
+            orders.forEach(order => {
+                switch(order.order_status) {
+                    case 'pending':
+                        pendingCount++;
+                        break;
+                    case 'processing':
+                        processingCount++;
+                        break;
+                    case 'confirmed':
+                    case 'shipped':
+                    case 'delivered':
+                        completedCount++;
+                        break;
+                }
+            });
+            
+            document.getElementById('totalOrders').textContent = totalCount;
+            document.getElementById('pendingOrders').textContent = pendingCount;
+            document.getElementById('processingOrders').textContent = processingCount;
+            document.getElementById('completedOrders').textContent = completedCount;
+        }
+        
+        function filterOrders(status) {
+            currentFilter = status;
+            
+            // Update filter button states
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            displayOrders();
+        }
+        
+        function displayOrders() {
+            const ordersList = document.getElementById('ordersList');
+            let filteredOrders = Object.entries(allOrders);
+            
+            if (currentFilter !== 'all') {
+                filteredOrders = filteredOrders.filter(([roomId, order]) => 
+                    order.order_status === currentFilter
+                );
+            }
+            
+            if (filteredOrders.length === 0) {
+                ordersList.innerHTML = `
+                    <div class="no-orders">
+                        <h3>📦 No ${currentFilter === 'all' ? '' : currentFilter} orders found</h3>
+                        <p>Orders will appear here when customers place them through the AI assistant.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort by order date (newest first)
+            filteredOrders.sort(([,a], [,b]) => {
+                const dateA = new Date(a.order_date || 0);
+                const dateB = new Date(b.order_date || 0);
+                return dateB - dateA;
+            });
+            
+            let ordersHtml = '';
+            
+            filteredOrders.forEach(([roomId, order]) => {
+                const orderDate = order.order_date ? new Date(order.order_date).toLocaleString() : 'N/A';
+                const statusClass = `status-${order.order_status || 'pending'}`;
+                const priorityClass = getPriorityClass(order);
+                
+                ordersHtml += `
+                    <div class="order-card ${priorityClass}" data-room-id="${roomId}">
+                        <div class="order-header">
+                            <div>
+                                <div class="order-id">Order: ${order.order_id || 'N/A'}</div>
+                                <div class="order-date">${orderDate}</div>
+                            </div>
+                            <div class="order-status ${statusClass}">${(order.order_status || 'pending').replace('_', ' ')}</div>
+                        </div>
+                        
+                        <div class="order-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Book Title</div>
+                                <div class="detail-value book-title">${order.book_title || 'N/A'}</div>
+                            </div>
+                            
+                            <div class="detail-item">
+                                <div class="detail-label">Author</div>
+                                <div class="detail-value">${order.author || 'N/A'}</div>
+                            </div>
+                            
+                            <div class="detail-item">
+                                <div class="detail-label">Customer</div>
+                                <div class="detail-value">${order.customer_name || 'N/A'}</div>
+                            </div>
+                            
+                            <div class="detail-item">
+                                <div class="detail-label">Contact</div>
+                                <div class="detail-value">${order.customer_id || 'N/A'}</div>
+                            </div>
+                            
+                            <div class="detail-item">
+                                <div class="detail-label">Quantity</div>
+                                <div class="detail-value">${order.quantity || 1}</div>
+                            </div>
+                            
+                            <div class="detail-item">
+                                <div class="detail-label">Total Amount</div>
+                                <div class="detail-value total-amount">$${order.total_amount || 'N/A'}</div>
+                            </div>
+                            
+                            <div class="detail-item">
+                                <div class="detail-label">Payment Method</div>
+                                <div class="detail-value">${order.payment_method || 'N/A'}</div>
+                            </div>
+                            
+                            <div class="detail-item">
+                                <div class="detail-label">Delivery</div>
+                                <div class="detail-value">${order.delivery_option || 'N/A'}</div>
+                            </div>
+                        </div>
+                        
+                        ${order.special_requests ? `
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                                <div class="detail-label">Special Requests</div>
+                                <div class="detail-value">${order.special_requests}</div>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="order-actions">
+                            ${getActionButtons(order, roomId)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            ordersList.innerHTML = ordersHtml;
+        }
+        
+        function getPriorityClass(order) {
+            // Determine priority based on order age and status
+            if (!order.order_date) return 'priority-low';
+            
+            const orderAge = Date.now() - new Date(order.order_date).getTime();
+            const hoursOld = orderAge / (1000 * 60 * 60);
+            
+            if (order.order_status === 'pending' && hoursOld > 24) return 'priority-high';
+            if (order.order_status === 'pending' && hoursOld > 6) return 'priority-medium';
+            return 'priority-low';
+        }
+        
+        function getActionButtons(order, roomId) {
+            const status = order.order_status || 'pending';
+            
+            switch(status) {
+                case 'pending':
+                    return `
+                        <button class="action-btn btn-accept" onclick="updateOrderStatus('${roomId}', 'confirmed')">
+                            ✅ Accept Order
+                        </button>
+                        <button class="action-btn btn-cancel" onclick="updateOrderStatus('${roomId}', 'cancelled')">
+                            ❌ Reject Order
+                        </button>
+                        <button class="action-btn btn-view" onclick="viewOrderDetails('${roomId}')">
+                            👁️ View Details
+                        </button>
+                    `;
+                case 'confirmed':
+                    return `
+                        <button class="action-btn btn-process" onclick="updateOrderStatus('${roomId}', 'processing')">
+                            🔄 Start Processing
+                        </button>
+                        <button class="action-btn btn-cancel" onclick="updateOrderStatus('${roomId}', 'cancelled')">
+                            ❌ Cancel Order
+                        </button>
+                        <button class="action-btn btn-view" onclick="viewOrderDetails('${roomId}')">
+                            👁️ View Details
+                        </button>
+                    `;
+                case 'processing':
+                    return `
+                        <button class="action-btn btn-ship" onclick="updateOrderStatus('${roomId}', 'shipped')">
+                            🚚 Mark as Shipped
+                        </button>
+                        <button class="action-btn btn-view" onclick="viewOrderDetails('${roomId}')">
+                            👁️ View Details
+                        </button>
+                    `;
+                case 'shipped':
+                    return `
+                        <button class="action-btn btn-process" onclick="updateOrderStatus('${roomId}', 'delivered')">
+                            📦 Mark as Delivered
+                        </button>
+                        <button class="action-btn btn-view" onclick="viewOrderDetails('${roomId}')">
+                            👁️ View Details
+                        </button>
+                    `;
+                default:
+                    return `
+                        <button class="action-btn btn-view" onclick="viewOrderDetails('${roomId}')">
+                            👁️ View Details
+                        </button>
+                    `;
+            }
+        }
+        
+        async function updateOrderStatus(roomId, newStatus) {
+            try {
+                const order = allOrders[roomId];
+                if (!order) {
+                    throw new Error('Order not found');
+                }
+                
+                const updatedOrder = {
+                    ...order,
+                    order_status: newStatus,
+                    updated_at: new Date().toISOString()
+                };
+                
+                const response = await fetch(`${API_BASE}/orders/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        room_id: roomId,
+                        order_data: updatedOrder
+                    })
+                });
+                
+                if (response.ok) {
+                    showNotification(`Order ${order.order_id} updated to ${newStatus}`, 'success');
+                    loadOrders(); // Refresh the orders list
+                } else {
+                    throw new Error('Failed to update order status');
+                }
+                
+            } catch (error) {
+                console.error('Error updating order status:', error);
+                showNotification(`Failed to update order: ${error.message}`, 'error');
+            }
+        }
+        
+        function viewOrderDetails(roomId) {
+            const order = allOrders[roomId];
+            if (!order) return;
+            
+            const details = `
+Order ID: ${order.order_id || 'N/A'}
+Customer: ${order.customer_name || 'N/A'}
+Contact: ${order.customer_id || 'N/A'}
+Book: ${order.book_title || 'N/A'}
+Author: ${order.author || 'N/A'}
+Quantity: ${order.quantity || 1}
+Total: $${order.total_amount || 'N/A'}
+Payment: ${order.payment_method || 'N/A'}
+Delivery: ${order.delivery_option || 'N/A'}
+Status: ${order.order_status || 'pending'}
+Date: ${order.order_date ? new Date(order.order_date).toLocaleString() : 'N/A'}
+${order.special_requests ? `\nSpecial Requests: ${order.special_requests}` : ''}
+            `;
+            
+            alert(details);
+        }
+        
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const messageEl = document.getElementById('notificationMessage');
+            
+            messageEl.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Load orders when page loads
+        window.addEventListener('DOMContentLoaded', loadOrders);
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadOrders, 30000);
+    </script>
+</body>
+</html>
