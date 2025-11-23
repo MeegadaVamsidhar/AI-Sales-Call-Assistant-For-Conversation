@@ -2,17 +2,25 @@
 
 A comprehensive AI-powered sales assistant system that enables voice-based book consultations with real-time transcription, order processing, and admin management capabilities.
 
+> 📚 **Quick Links to Component Documentation:**
+> - [📖 Backend README](./backend/README.md) - FastAPI server setup & API docs
+> - [📖 Agent README](./agent/README.md) - Voice AI agent configuration
+> - [📖 Frontend README](./agent-starter-react/README.md) - Next.js app setup
+
 ## 📋 Table of Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
+- [Environment Setup](#environment-setup)
 - [Quick Start](#quick-start)
 - [Manual Setup](#manual-setup)
+- [Component READMEs](#manual-setup)
 - [Admin Registration System](#admin-registration-system)
-- [Configuration](#configuration)
 - [API Documentation](#api-documentation)
+- [Service URLs](#service-urls)
+- [Project Structure](#project-structure)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
@@ -55,26 +63,12 @@ The AI Sales Call Assistant is a modern, full-stack application designed to revo
 
 ## ✨ Features
 
-### 🎯 Core Features
-- **Real-time Voice Interaction** - Natural conversation with AI assistant
-- **Intelligent Order Processing** - Automatic extraction of customer details
-- **Live Transcription** - Real-time speech-to-text conversion
-- **Order Management** - Complete order lifecycle management
-- **Customer Feedback** - Integrated feedback and rating system
-
-### 👤 Admin Features
-- **Secure Registration** - Email verification with manual approval
-- **Employee ID Assignment** - Auto-generated after verification
-- **Order Dashboard** - Comprehensive order management interface
-- **Analytics & Reporting** - Sales insights and performance metrics
-- **Customer Management** - Customer data and interaction history
-
-### 🔒 Security Features
-- **Email Verification** - Multi-step admin approval process
-- **Password Hashing** - Secure password storage with salt
-- **Rate Limiting** - Protection against brute force attacks
-- **CORS Protection** - Secure cross-origin resource sharing
-- **Input Validation** - Comprehensive data validation
+- **🎤 Real-time Voice AI** - Natural conversation with intelligent order processing
+- **📊 Post-Call Analytics** - Automatic summaries, sentiment analysis, and transcripts
+- **🤖 AI Personalization** - Context-aware recommendations based on user profiles (Regular vs VIP)
+- **👤 User Switching** - Toggle between different customer profiles to demonstrate personalization
+- **👤 Admin Dashboard** - Secure registration, order management, and analytics
+- **🔒 Security** - Email verification, password hashing, rate limiting, CORS protection
 
 ## 📋 Prerequisites
 
@@ -173,220 +167,71 @@ ADMIN_EMAIL=your_admin_email@gmail.com
 
 ## 🚀 Quick Start
 
-### Option 1: Automated Setup (Recommended)
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd Springboard16_10
-
-# Make the script executable (Linux/Mac)
-chmod +x run-all.sh
-
-# Run the automated setup
-./run-all.sh
-```
-
-The script will:
-- ✅ Check port availability (3000, 8000)
-- ✅ Create virtual environments
-- ✅ Install all dependencies
-- ✅ Create default configuration files
-- ✅ Start all services
-- ✅ Verify service health
-
-### Option 2: Manual Setup
+### Manual Setup
 
 See [Manual Setup](#manual-setup) section below.
 
 ## 🔧 Manual Setup
 
-### 1. Backend Setup
+### 📚 Component Documentation
+
+Each component has its own detailed README with comprehensive setup instructions:
+
+| Component | Description | Documentation |
+|-----------|-------------|---------------|
+| **Backend** | FastAPI server, database, API endpoints | [📖 Backend README](./backend/README.md) |
+| **Agent** | LiveKit voice AI with Deepgram & Gemini | [📖 Agent README](./agent/README.md) |
+| **Frontend** | Next.js React application | [📖 Frontend README](./agent-starter-react/README.md) |
+
+### Quick Setup Summary
 
 ```bash
+# 1. Backend (Port 8000)
 cd backend
-
-# Create virtual environment
-python -m venv .venv
-
-# Activate virtual environment
-# Windows:
-.venv\Scripts\activate
-# Linux/Mac:
-source .venv/bin/activate
-
-# Install dependencies
+python -m venv .venv && .venv\Scripts\activate  # Windows
 pip install -r requirements.txt
-
-# Create .env file
-cp .env.example .env
-# Edit .env with your configuration
-
-# Start the server
+cp .env.example .env  # Configure your credentials
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
 
-### 2. Frontend Setup
-
-```bash
+# 2. Frontend (Port 3000)
 cd agent-starter-react
-
-# Install dependencies
 pnpm install
-
-# Create environment file
-cp .env.example .env.local
-# Edit .env.local with your configuration
-
-# Start development server
+cp .env.example .env.local  # Configure your credentials
 pnpm dev
-```
 
-### 3. Agent Setup
-
-```bash
+# 3. Agent
 cd agent
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-
-# Install dependencies
+python -m venv venv && venv\Scripts\activate  # Windows
 pip install -r requirements.txt
-
-# Start the agent
+cp .env.example .env  # Configure your credentials
 python app.py dev
 ```
 
+> 💡 **See individual README files for detailed setup instructions, troubleshooting, and configuration options.**
+
 ## 👤 Admin Registration System
 
-The system implements a secure, multi-step admin registration process:
+Secure multi-step registration process:
 
-### Registration Workflow
+1. **Registration** - Visit `/auth/admin-signup` and provide name, email, password, department
+2. **Email Verification** - System sends verification email (expires in 7 days)
+3. **Manual Approval** - Admin clicks approval link, system generates Employee ID
+4. **Login** - Use Employee ID + Password to access dashboard
 
-1. **Admin Registration** 📝
-   - Visit: `http://localhost:3000/auth/admin-signup`
-   - Provide: Name, Email, Password, Department
-   - **No Employee ID required** (assigned after approval)
-
-2. **Email Verification** 📧
-   - System sends verification email to: `meegadavamsi76@gmail.com`
-   - Admin receives notification about pending approval
-   - Verification token expires in 7 days
-
-3. **Manual Approval** ✅
-   - Administrator clicks approval link in email
-   - System generates unique Employee ID (format: `EMP20241023ABC123`)
-   - Account status changed to "active"
-
-4. **Login Credentials** 🔐
-   - Admin receives email with Employee ID and login instructions
-   - Login using: Employee ID + Password
-   - Access granted to admin dashboard
-
-### Admin Features
-
-- **Order Management** - View and manage all customer orders
-- **Customer Analytics** - Insights into customer behavior
-- **Feedback Review** - Monitor customer satisfaction
-- **System Configuration** - Manage application settings
-
-## ⚙️ Configuration
-
-### Backend Configuration (.env)
-
-```env
-# MongoDB Configuration
-DATABASE_URL=mongodb://localhost:27017
-DB_NAME=agent_starter_db
-
-# Email Configuration
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-ADMIN_EMAIL=meegadavamsi76@gmail.com
-
-# LiveKit Configuration
-LIVEKIT_API_KEY=your-livekit-api-key
-LIVEKIT_API_SECRET=your-livekit-api-secret
-
-# Security
-JWT_SECRET=your-jwt-secret-key
-```
-
-### Frontend Configuration (.env.local)
-
-```env
-# Backend API URL
-BACKEND_URL=http://localhost:8000
-NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
-
-# NextAuth Configuration
-NEXTAUTH_SECRET=your-nextauth-secret
-NEXTAUTH_URL=http://localhost:3000
-
-# Database
-DATABASE_URL=mongodb://localhost:27017
-DB_NAME=agent_starter_db
-
-# LiveKit
-LIVEKIT_URL=wss://your-livekit-url
-LIVEKIT_API_KEY=your-api-key
-LIVEKIT_API_SECRET=your-api-secret
-```
 
 ## 📖 API Documentation
 
-### Core Endpoints
+Complete API documentation available at: **http://localhost:8000/docs** (Swagger UI)
 
-#### Authentication
-- `POST /api/auth/admin/register` - Admin registration
-- `GET /api/auth/admin/verify-email` - Email verification
-- `POST /api/auth/login` - Admin login
-- `POST /api/auth/logout` - Logout
+### Quick Reference
 
-#### Orders
-- `GET /api/orders` - List all orders
-- `POST /api/orders/submit` - Submit new order
-- `PUT /api/orders/{id}` - Update order status
+- **Authentication** - Admin registration, login, email verification
+- **Orders** - Create, list, and update orders
+- **Transcription** - Process voice calls and room data
+- **Feedback** - Submit and retrieve customer feedback
+- **Post-Call** - Automatic summaries, sentiment analysis, transcripts
 
-#### Transcription
-- `POST /process-transcription` - Process voice transcription
-- `GET /rooms/{room_id}` - Get room data
-
-#### Health & Monitoring
-- `GET /health` - Service health check
-- `GET /docs` - Interactive API documentation
-
-### Data Models
-
-#### Admin Registration
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "securepassword",
-  "department": "Sales"
-}
-```
-
-#### Order Data
-```json
-{
-  "customer_name": "Jane Smith",
-  "book_title": "The Great Gatsby",
-  "author": "F. Scott Fitzgerald",
-  "quantity": 2,
-  "payment_method": "credit_card",
-  "delivery_option": "home_delivery"
-}
-```
+> 📚 **For detailed API endpoints and data models, see [Backend README](./backend/README.md)**
 
 ## 🔍 Service URLs
 
@@ -395,8 +240,16 @@ After starting all services:
 - **🌐 Main Application**: http://localhost:3000
 - **👤 Admin Registration**: http://localhost:3000/auth/admin-signup
 - **🔐 Admin Login**: http://localhost:3000/auth/login
+- **📊 Call Summary**: http://localhost:3000/call-summary/{roomId}
+- **⭐ Feedback**: http://localhost:3000/feedback/{roomId}
 - **📖 API Documentation**: http://localhost:8000/docs
 - **❤️ Health Check**: http://localhost:8000/health
+
+## 🎨 UI/UX Features
+
+- **Dark Mode** - Modern slate color palette optimized for readability
+- **Responsive Design** - Mobile-first approach with adaptive layouts
+- **User Experience** - Smooth transitions, loading states, and toast notifications
 
 ## 🛠️ Troubleshooting
 
@@ -430,12 +283,6 @@ taskkill /PID <process-id> /F
 ### Useful Commands
 
 ```bash
-# Monitor all logs
-tail -f logs/backend.log logs/frontend.log logs/agent.log
-
-# Stop all services
-pkill -f 'uvicorn|pnpm|python.*app.py'
-
 # Test backend health
 curl http://localhost:8000/health
 
@@ -445,28 +292,41 @@ curl -X POST http://localhost:8000/api/auth/admin/register \
   -d '{"name":"Test","email":"test@example.com","password":"test123"}'
 ```
 
+> 💡 **For component-specific troubleshooting, see individual README files:**
+> - [Backend Troubleshooting](./backend/README.md#troubleshooting)
+> - [Agent Troubleshooting](./agent/README.md#troubleshooting)
+> - [Frontend Troubleshooting](./agent-starter-react/README.md#troubleshooting)
+
 ## 📁 Project Structure
 
 ```
-Springboard16_10/
-├── agent/                  # LiveKit Voice Agent
-│   ├── app.py             # Main agent application
-│   ├── requirements.txt   # Python dependencies
-│   └── venv/             # Virtual environment
-├── agent-starter-react/   # Next.js Frontend
-│   ├── app/              # App router pages
-│   ├── components/       # React components
-│   ├── lib/             # Utility libraries
-│   └── package.json     # Node dependencies
-├── backend/              # FastAPI Backend
+Springboard04_11/
+├── backend/              # FastAPI Backend (Port 8000)
+│   ├── core/            # Core business logic
+│   ├── db/              # Database layer
+│   ├── services/        # AI Services (sentiment, recommendations)
+│   ├── tests/           # Test files
 │   ├── main.py          # Main API application
-│   ├── database.py      # Database operations
 │   ├── requirements.txt # Python dependencies
-│   └── .venv/          # Virtual environment
-├── logs/                # Application logs
-├── run-all.sh          # Automated setup script
-└── README.md           # This file
+│   └── README.md        # 📖 Backend setup guide
+│
+├── agent/                # LiveKit Voice Agent
+│   ├── app.py           # Main agent application
+│   ├── requirements.txt # Python dependencies
+│   └── README.md        # 📖 Agent setup guide
+│
+├── agent-starter-react/  # Next.js Frontend (Port 3000)
+│   ├── app/             # Next.js App Router pages
+│   ├── components/      # React components
+│   ├── hooks/           # Custom React hooks
+│   ├── package.json     # Node dependencies
+│   └── README.md        # 📖 Frontend setup guide
+│
+└── README.md            # 📖 Main project documentation
 ```
+
+> 📚 **Each component has its own detailed README with setup instructions, API documentation, and troubleshooting guides.**
+
 
 ## 🤝 Contributing
 
@@ -484,12 +344,24 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For support and questions:
 - Check the [Troubleshooting](#troubleshooting) section
+- Review component-specific troubleshooting in individual READMEs
 - Review logs in the `logs/` directory
 - Open an issue on GitHub
 - Contact: meegadavamsi76@gmail.com
 
 ---
 
-**🚀 Ready to revolutionize book sales with AI? Get started now!**
+## 🎯 Getting Started
 
-Visit http://localhost:3000 after running the setup to begin your AI-powered sales journey.
+**New to the project?** Follow these steps:
+
+1. **📖 Read the Overview** - Understand the architecture and features above
+2. **⚙️ Setup Environment** - Configure API keys using the [Environment Setup](#environment-setup) guide
+3. **🚀 Quick Start** - Run the automated setup script or follow manual setup
+4. **📚 Component Docs** - Dive into individual component READMEs for detailed information:
+   - [Backend README](./backend/README.md) - API endpoints, database setup, testing
+   - [Agent README](./agent/README.md) - Voice AI configuration, model selection
+   - [Frontend README](./agent-starter-react/README.md) - UI components, pages, deployment
+5. **🌐 Access Application** - Visit http://localhost:3000 and start using the AI assistant!
+
+**Happy coding! 🚀**

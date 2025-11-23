@@ -7,3 +7,12 @@ uvicorn
 email-validator
 pandas
 openpyxl
+openai
+transformers
+torch
+numpy
+scipy
+textblob
+vaderSentiment
+nltk
+livekit-api

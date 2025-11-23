@@ -1,6 +1,6 @@
 python-dotenv
-livekit
-livekit-agents
+livekit>=0.15.0
+livekit-agents>=0.8.0
 livekit-plugins-deepgram
 livekit-plugins-google
 livekit-plugins-noise-cancellation

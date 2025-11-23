@@ -5,6 +5,14 @@
 .env.test.local
 .env.production.local
 
+# Runtime files (keep project directory clean)
+*.pid
+*.log
+
+# Batch files (optional - can be committed for convenience)
+# start-*.bat
+# stop-*.bat
+
 # Python
 __pycache__/
 *.py[cod]
@@ -17,7 +25,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+
 lib64/
 parts/
 sdist/
@@ -91,7 +99,7 @@ jspm_packages/
 .yarn-integrity
 
 # dotenv environment variables file
-.env
+.env.local 
 .env.test
 
 # parcel-bundler cache (https://parceljs.org/)
@@ -141,3 +149,51 @@ Thumbs.db
 # Backup files
 *.bak
 *.backup
+
+# API Keys and Secrets
+**/secrets/
+**/credentials/
+**/.credentials/
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+*.jks
+
+# Session and Token files
+*.session
+*.token
+**/sessions/
+
+# Database dumps and backups
+*.sql
+*.dump
+mongodb_dump/
+db_backups/
+
+# Configuration files with credentials
+config.json
+secrets.json
+credentials.json
+
+# Test output and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# IDE specific
+*.code-workspace
+.vscode/settings.json
+.vscode/launch.json
+
+# Local development files
+local_settings.py
+local_config.py
+
+# User uploaded files (if any)
+uploads/
+user_data/

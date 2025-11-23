@@ -16,12 +16,16 @@ class MongoDBService:
         self.orders_collection = None
         self.feedback_collection = None
         self.admins_collection = None
+        self.sentiment_collection = None
+        self.call_summaries_collection = None
         self.use_memory = False
         # In-memory fallback storage
         self._memory_transcripts: Dict[str, List[dict]] = defaultdict(list)
         self._memory_orders: Dict[str, dict] = {}
         self._memory_feedback: List[dict] = []
         self._memory_admins: List[dict] = []
+        self._memory_sentiment: Dict[str, List[dict]] = defaultdict(list)
+        self._memory_call_summaries: Dict[str, dict] = {}
     
     async def connect(self):
         """Connect to MongoDB"""
@@ -42,6 +46,8 @@ class MongoDBService:
             self.orders_collection = self.db.orders
             self.feedback_collection = self.db.feedback
             self.admins_collection = self.db.admins
+            self.sentiment_collection = self.db.sentiment
+            self.call_summaries_collection = self.db.call_summaries
             
             # Test connection
             await self.client.admin.command('ping')
@@ -56,6 +62,9 @@ class MongoDBService:
             await self.feedback_collection.create_index("room_id")
             await self.feedback_collection.create_index("customer_id")
             await self.feedback_collection.create_index("feedback_date")
+            await self.call_summaries_collection.create_index("room_id", unique=True)
+            await self.call_summaries_collection.create_index("generated_at")
+            await self.call_summaries_collection.create_index("call_outcome")
             
             # Clean up existing admin records with null employee_id to fix duplicate key issues
             try:
@@ -105,14 +114,22 @@ class MongoDBService:
         try:
             if self.use_memory:
                 transcript_data["room_id"] = room_id
-                self._memory_transcripts[room_id].append(transcript_data)
-                logger.info(f"📝 Stored transcript in MEMORY for room {room_id} (message: {transcript_data.get('message', '')[:50]}...)")
+                existing_idx = next((i for i, t in enumerate(self._memory_transcripts[room_id]) if t.get("id") == transcript_data.get("id")), -1)
+                if existing_idx >= 0:
+                    self._memory_transcripts[room_id][existing_idx] = transcript_data
+                else:
+                    self._memory_transcripts[room_id].append(transcript_data)
+                logger.info(f"📝 Upserted transcript in MEMORY for room {room_id} (message length: {len(transcript_data.get('message', ''))})")
                 return f"memory_{len(self._memory_transcripts[room_id])}"
             else:
                 transcript_data["room_id"] = room_id
-                result = await self.transcripts_collection.insert_one(transcript_data)
-                logger.info(f"📝 Stored transcript in MONGODB {result.inserted_id} for room {room_id} (message: {transcript_data.get('message', '')[:50]}...)")
-                return result.inserted_id
+                result = await self.transcripts_collection.update_one(
+                    {"room_id": room_id, "id": transcript_data.get("id")},
+                    {"$set": transcript_data},
+                    upsert=True
+                )
+                logger.info(f"📝 Upserted transcript for room {room_id} (message length: {len(transcript_data.get('message', ''))})")
+                return result.upserted_id or result.matched_count
         except Exception as e:
             logger.error(f"❌ Failed to store transcript: {e}")
             raise
@@ -373,6 +390,196 @@ class MongoDBService:
         except Exception as e:
             logger.error(f"Failed to get admin by verification token: {e}")
             raise
+
+    # Sentiment Analysis Data Methods
+    async def store_sentiment_data(self, room_id: str, sentiment_data: dict):
+        """Store sentiment analysis data"""
+        try:
+            sentiment_record = {
+                "room_id": room_id,
+                "sentiment_data": sentiment_data,
+                "created_at": datetime.utcnow()
+            }
+            
+            if self.use_memory:
+                self._memory_sentiment[room_id].append(sentiment_record)
+                logger.info(f"Stored sentiment data in memory for room {room_id}")
+            else:
+                await self.sentiment_collection.insert_one(sentiment_record)
+                logger.info(f"Stored sentiment data in MongoDB for room {room_id}")
+                
+        except Exception as e:
+            logger.error(f"Failed to store sentiment data: {e}")
+            # Don't raise exception as this is not critical for main functionality
+
+    async def get_sentiment_data(self, room_id: str):
+        """Get sentiment analysis data for a room"""
+        try:
+            if self.use_memory:
+                sentiment_records = self._memory_sentiment.get(room_id, [])
+                return [record["sentiment_data"] for record in sentiment_records]
+            else:
+                cursor = self.sentiment_collection.find({"room_id": room_id}).sort("created_at", 1)
+                sentiment_records = await cursor.to_list(length=None)
+                return [record["sentiment_data"] for record in sentiment_records]
+                
+        except Exception as e:
+            logger.error(f"Failed to get sentiment data: {e}")
+            return []
+
+    async def clear_sentiment_data(self, room_id: str):
+        """Clear sentiment data for a room"""
+        try:
+            if self.use_memory:
+                if room_id in self._memory_sentiment:
+                    del self._memory_sentiment[room_id]
+                logger.info(f"Cleared sentiment data from memory for room {room_id}")
+            else:
+                await self.sentiment_collection.delete_many({"room_id": room_id})
+                logger.info(f"Cleared sentiment data from MongoDB for room {room_id}")
+                
+        except Exception as e:
+            logger.error(f"Failed to clear sentiment data: {e}")
+            raise
+
+    async def get_latest_sentiment(self, room_id: str):
+        """Get the latest sentiment analysis data for a room"""
+        try:
+            if self.use_memory:
+                sentiment_records = self._memory_sentiment.get(room_id, [])
+                if sentiment_records:
+                    # Return the most recent record
+                    latest_record = max(sentiment_records, key=lambda x: x["created_at"])
+                    return latest_record["sentiment_data"]
+                return None
+            else:
+                # Get the most recent sentiment record for this room
+                cursor = self.sentiment_collection.find({"room_id": room_id}).sort("created_at", -1).limit(1)
+                records = await cursor.to_list(length=1)
+                if records:
+                    return records[0]["sentiment_data"]
+                return None
+                
+        except Exception as e:
+            logger.error(f"Failed to get latest sentiment data: {e}")
+            return None
+
+    async def get_all_sentiment_data(self):
+        """Get all sentiment data (for admin/analytics)"""
+        try:
+            if self.use_memory:
+                all_data = []
+                for room_id, records in self._memory_sentiment.items():
+                    for record in records:
+                        all_data.append({
+                            "room_id": room_id,
+                            **record["sentiment_data"],
+                            "created_at": record["created_at"]
+                        })
+                return all_data
+            else:
+                cursor = self.sentiment_collection.find({}).sort("created_at", -1)
+                records = await cursor.to_list(length=None)
+                return [
+                    {
+                        "room_id": record["room_id"],
+                        **record["sentiment_data"],
+                        "created_at": record["created_at"]
+                    } for record in records
+                ]
+                
+        except Exception as e:
+            logger.error(f"Failed to get all sentiment data: {e}")
+            return []
+
+    # Call Summary Methods
+    async def store_call_summary(self, room_id: str, summary_data: dict):
+        """Store call summary data"""
+        try:
+            summary_data["room_id"] = room_id
+            
+            if self.use_memory:
+                self._memory_call_summaries[room_id] = summary_data
+                logger.info(f"Stored call summary in memory for room {room_id}")
+                return room_id
+            else:
+                # Replace existing summary for this room (one summary per call)
+                result = await self.call_summaries_collection.replace_one(
+                    {"room_id": room_id},
+                    summary_data,
+                    upsert=True
+                )
+                logger.info(f"Stored call summary for room {room_id}")
+                return result.upserted_id or result.matched_count
+                
+        except Exception as e:
+            logger.error(f"Failed to store call summary: {e}")
+            raise
+    
+    async def get_call_summary(self, room_id: str):
+        """Get call summary for a specific room"""
+        try:
+            if self.use_memory:
+                return self._memory_call_summaries.get(room_id)
+            else:
+                summary = await self.call_summaries_collection.find_one({"room_id": room_id})
+                return summary
+                
+        except Exception as e:
+            logger.error(f"Failed to get call summary: {e}")
+            return None
+    
+    async def get_all_call_summaries(self, limit: int = 100):
+        """Get all call summaries (for admin/analytics)"""
+        try:
+            if self.use_memory:
+                summaries = list(self._memory_call_summaries.values())
+                # Sort by generated_at descending
+                summaries.sort(key=lambda x: x.get("generated_at", ""), reverse=True)
+                return summaries[:limit]
+            else:
+                cursor = self.call_summaries_collection.find({}).sort("generated_at", -1).limit(limit)
+                summaries = await cursor.to_list(length=limit)
+                return summaries
+                
+        except Exception as e:
+            logger.error(f"Failed to get all call summaries: {e}")
+            return []
+    
+    async def get_summaries_by_outcome(self, call_outcome: str):
+        """Get call summaries filtered by outcome"""
+        try:
+            if self.use_memory:
+                summaries = [s for s in self._memory_call_summaries.values() 
+                           if s.get("call_outcome") == call_outcome]
+                summaries.sort(key=lambda x: x.get("generated_at", ""), reverse=True)
+                return summaries
+            else:
+                cursor = self.call_summaries_collection.find({"call_outcome": call_outcome}).sort("generated_at", -1)
+                summaries = await cursor.to_list(length=None)
+                return summaries
+                
+        except Exception as e:
+            logger.error(f"Failed to get summaries by outcome: {e}")
+            return []
+    
+    async def delete_call_summary(self, room_id: str):
+        """Delete call summary for a room"""
+        try:
+            if self.use_memory:
+                if room_id in self._memory_call_summaries:
+                    del self._memory_call_summaries[room_id]
+                    logger.info(f"Deleted call summary from memory for room {room_id}")
+                    return True
+                return False
+            else:
+                result = await self.call_summaries_collection.delete_one({"room_id": room_id})
+                logger.info(f"Deleted call summary for room {room_id}")
+                return result.deleted_count > 0
+                
+        except Exception as e:
+            logger.error(f"Failed to delete call summary: {e}")
+            return False
 
 # Global database service instance
 db_service = MongoDBService()

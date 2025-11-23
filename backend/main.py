@@ -1,12 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Optional, Literal, Any
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from database import db_service
+from db.database import db_service
 import logging
 import os
 import smtplib
@@ -18,11 +17,53 @@ import pandas as pd
 from io import BytesIO
 import uuid
 
+# Optional imports - make them fail gracefully
+try:
+    from services.sentiment_analysis import sentiment_engine
+    SENTIMENT_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Sentiment analysis not available: {e}")
+    SENTIMENT_AVAILABLE = False
+    sentiment_engine = None
+
+try:
+    from services.product_recommendation import recommendation_engine
+    RECOMMENDATION_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Product recommendation not available: {e}")
+    RECOMMENDATION_AVAILABLE = False
+    recommendation_engine = None
+
+try:
+    from services.question_generator import question_generator
+    QUESTION_GENERATOR_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Question generator not available: {e}")
+    QUESTION_GENERATOR_AVAILABLE = False
+    question_generator = None
+
+try:
+    from core.call_summary_generator import summary_generator
+    CALL_SUMMARY_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Call summary generator not available: {e}")
+    CALL_SUMMARY_AVAILABLE = False
+    summary_generator = None
+
+try:
+    from core.call_end_handler import generate_call_end_report
+    CALL_END_HANDLER_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Call end handler not available: {e}")
+    CALL_END_HANDLER_AVAILABLE = False
+    generate_call_end_report = None
+
 # Load environment variables
 load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+# Force reload trigger
 
 # LiveKit API - Optional import
 try:
@@ -42,11 +83,12 @@ SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "meegadavamsi76@gmail.com")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
 
 class TokenRequest(BaseModel):
     room_name: str
     identity: str
+    userName: Optional[str] = None
 
 
 
@@ -141,10 +183,38 @@ class UpdateOrderStatusRequest(BaseModel):
     admin_notes: Optional[str] = None
 
 
+class SentimentData(BaseModel):
+    overall_sentiment: str
+    confidence: float
+    polarity: float
+    subjectivity: float
+    intensity: float
+    emotions: Dict[str, float]
+    urgency: float
+    engagement: float
+    satisfaction: float
+    purchase_intent: float
+    objection_level: float
+    trust_level: float
+    timestamp: datetime
+    message_length: int
+    processing_time: float
+
+class SentimentShiftData(BaseModel):
+    previous_sentiment: str
+    current_sentiment: str
+    shift_magnitude: float
+    shift_direction: str
+    trigger_phrases: List[str]
+    timestamp: datetime
+    confidence: float
+
 class RoomData(BaseModel):
     room_id: str
     transcripts: List[TranscriptItem]
     order: OrderData
+    sentiment_analysis: Optional[Dict[str, Any]] = None
+    sentiment_shifts: Optional[List[SentimentShiftData]] = None
     updated_at: float
 
 # Utility functions for admin management
@@ -168,7 +238,7 @@ def generate_verification_token() -> str:
     return secrets.token_urlsafe(32)
 
 def send_admin_verification_email(admin_name: str, admin_email: str, verification_token: str):
-    """Send verification email to admin and notification to meegadavamsi76@gmail.com"""
+    """Send verification email to admin and notification to system administrator"""
     try:
         # Check SMTP configuration
         if not SMTP_USERNAME or not SMTP_PASSWORD:
@@ -208,10 +278,10 @@ def send_admin_verification_email(admin_name: str, admin_email: str, verificatio
         
         admin_msg.attach(MIMEText(admin_body, 'plain'))
         
-        # Email to meegadavamsi76@gmail.com for approval
+        # Email to system administrator for approval
         approval_msg = MIMEMultipart()
         approval_msg['From'] = sender_email
-        approval_msg['To'] = "meegadavamsi76@gmail.com"
+        approval_msg['To'] = ADMIN_EMAIL
         approval_msg['Subject'] = f"New Admin Registration Approval Required - {admin_name}"
         
         approval_body = f"""
@@ -244,7 +314,7 @@ def send_admin_verification_email(admin_name: str, admin_email: str, verificatio
             
             # Send to approver
             server.send_message(approval_msg)
-            logging.info(f"Approval notification sent to: meegadavamsi76@gmail.com")
+            logging.info(f"Approval notification sent to: {ADMIN_EMAIL}")
             
     except Exception as e:
         logging.error(f"Failed to send verification email: {e}")
@@ -252,7 +322,7 @@ def send_admin_verification_email(admin_name: str, admin_email: str, verificatio
         logging.info(f"Verification URL (for development): {verification_url}")
         raise HTTPException(status_code=500, detail="Failed to send verification email")
 
-def send_admin_approval_email(admin_name: str, admin_email: str, employee_id: str = None):
+def send_admin_approval_email(admin_name: str, admin_email: str, employee_id: Optional[str] = None):
     """Send approval confirmation email to admin"""
     try:
         # Email configuration
@@ -270,7 +340,7 @@ def send_admin_approval_email(admin_name: str, admin_email: str, employee_id: st
         body = f"""
         Dear {admin_name},
         
-        Great news! Your admin account has been approved and activated by meegadavamsi76@gmail.com.
+        Great news! Your admin account has been approved and activated by the system administrator.
         
         You can now log in to the AI Sales Assistant admin panel using your credentials.
         
@@ -370,14 +440,12 @@ def extract_order_data(transcripts: List[TranscriptItem]) -> OrderData:
     # Processes both user inputs and agent responses for comprehensive data capture
     import re
 
-    # Separate user and agent messages for better context
-    user_messages = [t.message for t in transcripts if t.role == "user"]
-    agent_messages = [t.message for t in transcripts if t.role == "assistant"]
+    # Separate user and agent messages for better context (keeping for future use)
+    # user_messages = [t.message for t in transcripts if t.role == "user"]
+    # agent_messages = [t.message for t in transcripts if t.role == "assistant"]
     
     # Combine all messages for comprehensive extraction
     full_text = "\n".join([t.message for t in transcripts])
-    user_text = "\n".join(user_messages)
-    agent_text = "\n".join(agent_messages)
 
     # Enhanced name extraction from both user and agent messages
     name_patterns = [
@@ -450,7 +518,11 @@ def extract_order_data(transcripts: List[TranscriptItem]) -> OrderData:
         # Try word-based quantity
         word_qty_match = re.search(r"(?i)\b(one|two|three|four|five|six|seven|eight|nine|ten)\b\s*(?:copies?|books?)", full_text)
         if word_qty_match:
-            qty_match = type('obj', (object,), {'group': lambda x: word_to_num.get(word_qty_match.group(1).lower(), '1')})()
+            # Create a mock match object for word-based quantities
+            class MockMatch:
+                def group(self, n: int) -> str:
+                    return word_to_num.get(word_qty_match.group(1).lower(), '1')
+            qty_match = MockMatch()
 
     # Enhanced payment method extraction
     pay_patterns = [
@@ -525,11 +597,8 @@ def extract_order_data(transcripts: List[TranscriptItem]) -> OrderData:
     if title_match:
         book_title = (title_match.group(1) or title_match.group(2) or "").strip()
     
-    # Generate order ID if we have enough data
+    # Don't generate order ID during extraction - only when user confirms
     order_id = None
-    if book_title and customer_id_match:
-        import uuid
-        order_id = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
     
     # Calculate total amount (placeholder logic - you can update with actual pricing)
     unit_price = 15.99  # Default book price
@@ -550,8 +619,8 @@ def extract_order_data(transcripts: List[TranscriptItem]) -> OrderData:
         payment_method=(pay_match.group(1).lower() if pay_match else None),
         delivery_option=delivery_option,
         delivery_address=delivery_address,
-        order_status="pending",
-        order_date=datetime.utcnow(),
+        order_status="draft",  # Changed to 'draft' - not confirmed yet
+        order_date=None,  # Don't set date until user confirms
         special_requests=(special_requests_match.group(1).strip() if special_requests_match else None),
     )
 
@@ -584,6 +653,9 @@ async def get_livekit_token(req: TokenRequest):
         if not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET or LIVEKIT_API_KEY == "YOUR_LIVEKIT_API_KEY" or LIVEKIT_API_SECRET == "YOUR_LIVEKIT_API_SECRET":
             raise HTTPException(status_code=500, detail="LiveKit API key or secret not set")
 
+        if AccessToken is None or VideoGrants is None:
+            raise HTTPException(status_code=503, detail="LiveKit API not available. Please install livekit-api package.")
+            
         token = AccessToken(
             LIVEKIT_API_KEY,
             LIVEKIT_API_SECRET,
@@ -591,6 +663,10 @@ async def get_livekit_token(req: TokenRequest):
         token.with_identity(req.identity).with_grants(
             VideoGrants(room_join=True, room=req.room_name)
         )
+        
+        # Add userName to token metadata if provided
+        if req.userName:
+            token.with_metadata(json.dumps({"userName": req.userName}))
 
         return {"access_token": token.to_jwt()}
     except Exception as e:
@@ -621,6 +697,60 @@ async def process_transcription(req: ProcessTranscriptionRequest):
         }
         await db_service.store_transcript(req.room_id, transcript_data)
         
+        # Real-time sentiment analysis for user messages
+        sentiment_analysis = None
+        sentiment_shifts = []
+        
+        if req.item.role == "user" and req.item.message.strip() and SENTIMENT_AVAILABLE:
+            try:
+                # Analyze sentiment of the user message
+                sentiment_score = await sentiment_engine.analyze_message_sentiment(
+                    req.item.message, 
+                    user_id=req.room_id
+                )
+                
+                # Convert to dictionary for API response
+                sentiment_analysis = {
+                    "overall_sentiment": sentiment_score.overall_sentiment.value,
+                    "confidence": sentiment_score.confidence,
+                    "polarity": sentiment_score.polarity,
+                    "subjectivity": sentiment_score.subjectivity,
+                    "intensity": sentiment_score.intensity,
+                    "emotions": sentiment_score.emotions,
+                    "urgency": sentiment_score.urgency,
+                    "engagement": sentiment_score.engagement,
+                    "satisfaction": sentiment_score.satisfaction,
+                    "purchase_intent": sentiment_score.purchase_intent,
+                    "objection_level": sentiment_score.objection_level,
+                    "trust_level": sentiment_score.trust_level,
+                    "timestamp": sentiment_score.timestamp.isoformat(),
+                    "message_length": sentiment_score.message_length,
+                    "processing_time": sentiment_score.processing_time
+                }
+                
+                # Detect sentiment shifts
+                shifts = sentiment_engine.detect_sentiment_shifts(req.room_id)
+                sentiment_shifts = [
+                    SentimentShiftData(
+                        previous_sentiment=shift.previous_sentiment.value,
+                        current_sentiment=shift.current_sentiment.value,
+                        shift_magnitude=shift.shift_magnitude,
+                        shift_direction=shift.shift_direction,
+                        trigger_phrases=shift.trigger_phrases,
+                        timestamp=shift.timestamp,
+                        confidence=shift.confidence
+                    ) for shift in shifts
+                ]
+                
+                # Store sentiment data in MongoDB
+                await db_service.store_sentiment_data(req.room_id, sentiment_analysis)
+                
+                logging.info(f"Sentiment analysis completed for room {req.room_id}: {sentiment_score.overall_sentiment.value} (confidence: {sentiment_score.confidence:.2f})")
+                
+            except Exception as e:
+                logging.error(f"Sentiment analysis failed: {e}")
+                # Continue processing even if sentiment analysis fails
+        
         # Get all transcripts for this room
         transcripts = await db_service.get_transcripts(req.room_id)
         
@@ -634,22 +764,19 @@ async def process_transcription(req: ProcessTranscriptionRequest):
             ) for t in transcripts
         ]
         
-        # Extract order data from all transcripts
+        # Extract order data from all transcripts (for display only)
         order_data = extract_order_data(transcript_items)
         
-        # Store order data in MongoDB
-        order_dict = order_data.dict()
-        await db_service.store_order(req.room_id, order_dict)
+        # Don't automatically store orders - only store when user confirms via /orders/submit
+        # This prevents creating orders just from conversation without confirmation
         
-        # Send email notification if order has sufficient data
-        if order_data.order_id and order_data.customer_id and order_data.book_title:
-            send_order_notification_email(order_data, req.room_id)
-        
-        # Return room data
+        # Return room data with sentiment analysis
         room_data = RoomData(
             room_id=req.room_id,
             transcripts=transcript_items,
             order=order_data,
+            sentiment_analysis=sentiment_analysis,
+            sentiment_shifts=sentiment_shifts,
             updated_at=datetime.utcnow().timestamp(),
         )
         return room_data
@@ -747,7 +874,9 @@ async def login(credentials: dict):
     email = credentials.get("email", "")
     password = credentials.get("password", "")
     employee_id = credentials.get("employee_id", "")
+    name = credentials.get("name", "")
     user_type = credentials.get("userType", "customer")
+    is_oauth = credentials.get("isOAuth", False)  # Flag to indicate OAuth login
     
     # Admin authentication
     if user_type == "admin":
@@ -787,14 +916,20 @@ async def login(credentials: dict):
         }
     
     # Customer authentication (simplified for development)
+    # For OAuth login, allow without name but agent will ask for it
+    # For regular login, require name upfront
+    if not is_oauth and not name:
+        raise HTTPException(status_code=400, detail="Name is required for customer login")
+    
     return {
         "user": {
             "id": "dev_user_001",
-            "name": "Development User",
+            "name": name if name else None,  # None if OAuth without name
             "email": email or "dev@bookwise.com",
             "role": "user"
         },
-        "token": "dev_token_123"
+        "token": "dev_token_123",
+        "needsName": is_oauth and not name  # Signal frontend that agent should ask for name
     }
 
 @app.post("/api/auth/logout")
@@ -967,23 +1102,42 @@ async def export_admins_excel():
         df = pd.DataFrame(admin_data)
         excel_buffer = BytesIO()
         
-        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Admin Accounts', index=False)
+        # Use openpyxl directly to avoid BytesIO compatibility issues
+        from openpyxl import Workbook
+        from openpyxl.utils.dataframe import dataframe_to_rows
+        
+        wb = Workbook()
+        ws = wb.active
+        if ws is not None:
+            ws.title = 'Admin Accounts'
+            
+            # Add data from DataFrame
+            for r in dataframe_to_rows(df, index=False, header=True):
+                ws.append(r)
             
             # Auto-adjust column widths
-            worksheet = writer.sheets['Admin Accounts']
-            for column in worksheet.columns:
+            for column in ws.columns:
                 max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 50)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
+                try:
+                    first_cell = column[0]
+                    if hasattr(first_cell, 'column_letter'):
+                        column_letter = getattr(first_cell, 'column_letter', None)
+                        if column_letter is None:
+                            continue
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = min(max_length + 2, 50)
+                        ws.column_dimensions[column_letter].width = adjusted_width
+                except AttributeError:
+                    # Skip merged cells or other non-standard cells
+                    pass
         
+        # Save to BytesIO
+        wb.save(excel_buffer)
         excel_buffer.seek(0)
         
         # Generate filename with timestamp
@@ -1032,23 +1186,42 @@ async def export_orders_excel():
         df = pd.DataFrame(order_data)
         excel_buffer = BytesIO()
         
-        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Orders', index=False)
+        # Use openpyxl directly to avoid BytesIO compatibility issues
+        from openpyxl import Workbook
+        from openpyxl.utils.dataframe import dataframe_to_rows
+        
+        wb = Workbook()
+        ws = wb.active
+        if ws is not None:
+            ws.title = 'Orders'
+            
+            # Add data from DataFrame
+            for r in dataframe_to_rows(df, index=False, header=True):
+                ws.append(r)
             
             # Auto-adjust column widths
-            worksheet = writer.sheets['Orders']
-            for column in worksheet.columns:
+            for column in ws.columns:
                 max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 50)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
+                try:
+                    first_cell = column[0]
+                    if hasattr(first_cell, 'column_letter'):
+                        column_letter = getattr(first_cell, 'column_letter', None)
+                        if column_letter is None:
+                            continue
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = min(max_length + 2, 50)
+                        ws.column_dimensions[column_letter].width = adjusted_width
+                except AttributeError:
+                    # Skip merged cells or other non-standard cells
+                    pass
         
+        # Save to BytesIO
+        wb.save(excel_buffer)
         excel_buffer.seek(0)
         
         # Generate filename with timestamp
@@ -1084,6 +1257,8 @@ async def get_all_transcripts():
                 ]
         else:
             # Get from MongoDB
+            if db_service.transcripts_collection is None:
+                return {"total_rooms": 0, "total_transcripts": 0, "rooms": {}}
             cursor = db_service.transcripts_collection.find({}).sort("timestamp", 1)
             transcripts = await cursor.to_list(length=None)
             
@@ -1118,8 +1293,11 @@ async def get_all_orders():
         all_orders = {}
         
         if db_service.use_memory:
-            # Get from memory storage
+            # Get from memory storage - exclude draft orders
             for room_id, order_data in db_service._memory_orders.items():
+                # Skip draft orders - only show confirmed/pending orders
+                if order_data.get("order_status") == "draft":
+                    continue
                 all_orders[room_id] = OrderData(
                     order_id=order_data.get("order_id"),
                     customer_id=order_data.get("customer_id"),
@@ -1138,8 +1316,10 @@ async def get_all_orders():
                     special_requests=order_data.get("special_requests"),
                 )
         else:
-            # Get from MongoDB
-            cursor = db_service.orders_collection.find({})
+            # Get from MongoDB - exclude draft orders
+            if db_service.orders_collection is None:
+                return {"total_orders": 0, "orders": {}}
+            cursor = db_service.orders_collection.find({"order_status": {"$ne": "draft"}})
             orders = await cursor.to_list(length=None)
             
             for order in orders:
@@ -1168,6 +1348,81 @@ async def get_all_orders():
         
     except Exception as e:
         logging.error(f"Error getting all orders: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.get("/orders/user/{user_id}")
+async def get_user_orders(user_id: str):
+    """Get orders for a specific user (by customer_id or customer email)"""
+    try:
+        user_orders = {}
+        
+        if db_service.use_memory:
+            # Get from memory storage - filter by customer_id and exclude draft orders
+            for room_id, order_data in db_service._memory_orders.items():
+                # Skip draft orders - only show confirmed/pending orders that user submitted
+                if order_data.get("order_status") == "draft":
+                    continue
+                if order_data.get("customer_id") == user_id or order_data.get("customer_name") == user_id:
+                    user_orders[room_id] = OrderData(
+                        order_id=order_data.get("order_id"),
+                        customer_id=order_data.get("customer_id"),
+                        customer_name=order_data.get("customer_name"),
+                        book_title=order_data.get("book_title"),
+                        author=order_data.get("author"),
+                        genre=order_data.get("genre"),
+                        quantity=order_data.get("quantity"),
+                        unit_price=order_data.get("unit_price"),
+                        total_amount=order_data.get("total_amount"),
+                        payment_method=order_data.get("payment_method"),
+                        delivery_option=order_data.get("delivery_option"),
+                        delivery_address=order_data.get("delivery_address"),
+                        order_status=order_data.get("order_status", "pending"),
+                        order_date=order_data.get("order_date"),
+                        special_requests=order_data.get("special_requests"),
+                    )
+        else:
+            # Get from MongoDB - filter by customer_id or customer_name, exclude draft orders
+            if db_service.orders_collection is None:
+                return {"total_orders": 0, "orders": {}}
+            cursor = db_service.orders_collection.find({
+                "$and": [
+                    {
+                        "$or": [
+                            {"customer_id": user_id},
+                            {"customer_name": user_id}
+                        ]
+                    },
+                    {"order_status": {"$ne": "draft"}}  # Exclude draft orders
+                ]
+            })
+            orders = await cursor.to_list(length=None)
+            
+            for order in orders:
+                user_orders[order["room_id"]] = OrderData(
+                    order_id=order.get("order_id"),
+                    customer_id=order.get("customer_id"),
+                    customer_name=order.get("customer_name"),
+                    book_title=order.get("book_title"),
+                    author=order.get("author"),
+                    genre=order.get("genre"),
+                    quantity=order.get("quantity"),
+                    unit_price=order.get("unit_price"),
+                    total_amount=order.get("total_amount"),
+                    payment_method=order.get("payment_method"),
+                    delivery_option=order.get("delivery_option"),
+                    delivery_address=order.get("delivery_address"),
+                    order_status=order.get("order_status", "pending"),
+                    order_date=order.get("order_date"),
+                    special_requests=order.get("special_requests"),
+                )
+        
+        return {
+            "total_orders": len(user_orders),
+            "orders": user_orders
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting user orders: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.post("/feedback", response_model=FeedbackData)
@@ -1278,6 +1533,150 @@ async def submit_order(req: SubmitOrderRequest):
         logging.error(f"Error submitting order: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to submit order: {str(e)}")
 
+@app.post("/api/admin/orders/update-status")
+async def update_order_status(request: dict):
+    """Update order status (accept/reject)"""
+    try:
+        room_id = request.get("room_id")
+        order_id = request.get("order_id")
+        status = request.get("status")  # 'confirmed' or 'rejected'
+        
+        if not room_id or not order_id or not status:
+            raise HTTPException(status_code=400, detail="Missing required fields")
+        
+        # Get existing order
+        order = await db_service.get_order(room_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        # Update order status
+        order['order_status'] = status
+        order['updated_at'] = datetime.utcnow()
+        
+        # Store updated order
+        await db_service.store_order(room_id, order)
+        
+        logging.info(f"Order {order_id} status updated to {status}")
+        
+        return {
+            "success": True,
+            "message": f"Order {status} successfully",
+            "order_id": order_id,
+            "status": status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error updating order status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update order status: {str(e)}")
+
+@app.post("/api/admin/orders/send-confirmation")
+async def send_order_confirmation_email(request: dict):
+    """Send order confirmation/rejection email to customer"""
+    try:
+        order_id = request.get("order_id")
+        customer_email = request.get("customer_email")
+        customer_name = request.get("customer_name")
+        book_title = request.get("book_title")
+        status = request.get("status")  # 'confirmed' or 'rejected'
+        order_details = request.get("order_details", {})
+        
+        if not order_id or not customer_email or not status:
+            raise HTTPException(status_code=400, detail="Missing required fields: order_id, customer_email, and status")
+        
+        # Ensure customer_email is a valid string
+        if not isinstance(customer_email, str) or not customer_email.strip():
+            raise HTTPException(status_code=400, detail="Invalid customer email")
+        
+        # Check SMTP configuration
+        if not SMTP_USERNAME or not SMTP_PASSWORD:
+            logging.warning("SMTP not configured, skipping email")
+            return {"success": True, "message": "Email skipped (SMTP not configured)"}
+        
+        # Prepare email
+        msg = MIMEMultipart()
+        msg['From'] = SMTP_USERNAME
+        msg['To'] = customer_email
+        
+        if status == 'confirmed':
+            msg['Subject'] = f"Order Confirmed - {book_title or 'Your Book Order'}"
+            body = f"""
+Dear {customer_name or 'Customer'},
+
+Great news! Your book order has been confirmed! 🎉
+
+Order Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 Book Title: {book_title or 'N/A'}
+✍️  Author: {order_details.get('author', 'N/A')}
+📦 Quantity: {order_details.get('quantity', 1)}
+💰 Total Amount: ${order_details.get('total_amount', 0):.2f}
+💳 Payment Method: {order_details.get('payment_method', 'N/A')}
+🚚 Delivery Option: {order_details.get('delivery_option', 'N/A')}
+📍 Delivery Address: {order_details.get('delivery_address', 'N/A')}
+🆔 Order ID: {order_id}
+
+Your order will be processed and shipped soon. You will receive a tracking number once your order is dispatched.
+
+Thank you for choosing BookWise! 📖
+
+Best regards,
+BookWise Team
+            """
+        else:  # rejected
+            msg['Subject'] = f"Order Update - {book_title or 'Your Book Order'}"
+            body = f"""
+Dear {customer_name or 'Customer'},
+
+We regret to inform you that we are unable to process your order at this time.
+
+Order Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 Book Title: {book_title or 'N/A'}
+🆔 Order ID: {order_id}
+
+Possible reasons:
+• Book is currently out of stock
+• Delivery not available to your location
+• Payment verification issues
+
+Please contact our customer support for more information or to place a new order.
+
+We apologize for any inconvenience caused.
+
+Best regards,
+BookWise Team
+            """
+        
+        msg.attach(MIMEText(body, 'plain'))
+        
+        # Send email
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        text = msg.as_string()
+        server.sendmail(SMTP_USERNAME, customer_email, text)
+        server.quit()
+        
+        logging.info(f"Order {status} email sent to {customer_email} for order {order_id}")
+        
+        return {
+            "success": True,
+            "message": f"Confirmation email sent successfully",
+            "order_id": order_id,
+            "recipient": customer_email
+        }
+        
+    except Exception as e:
+        logging.error(f"Error sending confirmation email: {e}")
+        # Don't fail the request if email fails
+        return {
+            "success": False,
+            "message": f"Failed to send email: {str(e)}",
+            "order_id": order_id
+        }
+
 @app.get("/orders-dashboard")
 async def get_orders_dashboard():
     """Serve the orders dashboard HTML page"""
@@ -1331,3 +1730,1103 @@ async def export_all_data():
     except Exception as e:
         logging.error(f"Error exporting data: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# Sentiment Analysis Endpoints
+@app.post("/sentiment/analyze")
+async def analyze_sentiment(request: Dict[str, str]):
+    """Analyze sentiment of a single message"""
+    try:
+        message = request.get("message", "")
+        user_id = request.get("user_id", "default")
+        
+        if not message.strip():
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
+        
+        sentiment_score = await sentiment_engine.analyze_message_sentiment(message, user_id)
+        
+        return {
+            "overall_sentiment": sentiment_score.overall_sentiment.value,
+            "confidence": sentiment_score.confidence,
+            "polarity": sentiment_score.polarity,
+            "subjectivity": sentiment_score.subjectivity,
+            "intensity": sentiment_score.intensity,
+            "emotions": sentiment_score.emotions,
+            "sales_metrics": {
+                "urgency": sentiment_score.urgency,
+                "engagement": sentiment_score.engagement,
+                "satisfaction": sentiment_score.satisfaction,
+                "purchase_intent": sentiment_score.purchase_intent,
+                "objection_level": sentiment_score.objection_level,
+                "trust_level": sentiment_score.trust_level
+            },
+            "metadata": {
+                "timestamp": sentiment_score.timestamp.isoformat(),
+                "message_length": sentiment_score.message_length,
+                "processing_time": sentiment_score.processing_time
+            }
+        }
+        
+    except Exception as e:
+        logging.error(f"Error in sentiment analysis: {e}")
+        raise HTTPException(status_code=500, detail=f"Sentiment analysis failed: {str(e)}")
+
+@app.get("/sentiment/shifts/{room_id}")
+async def get_sentiment_shifts(room_id: str):
+    """Get sentiment shifts for a specific room/conversation"""
+    try:
+        shifts = sentiment_engine.detect_sentiment_shifts(room_id)
+        
+        return {
+            "room_id": room_id,
+            "shifts_count": len(shifts),
+            "shifts": [
+                {
+                    "previous_sentiment": shift.previous_sentiment.value,
+                    "current_sentiment": shift.current_sentiment.value,
+                    "shift_magnitude": shift.shift_magnitude,
+                    "shift_direction": shift.shift_direction,
+                    "trigger_phrases": shift.trigger_phrases,
+                    "timestamp": shift.timestamp.isoformat(),
+                    "confidence": shift.confidence
+                } for shift in shifts
+            ]
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting sentiment shifts: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get sentiment shifts: {str(e)}")
+
+@app.get("/sentiment/summary/{room_id}")
+async def get_conversation_sentiment_summary(room_id: str):
+    """Get comprehensive sentiment summary for a conversation"""
+    try:
+        summary = sentiment_engine.get_conversation_summary(room_id)
+        
+        if "error" in summary:
+            raise HTTPException(status_code=404, detail=summary["error"])
+        
+        return {
+            "room_id": room_id,
+            "summary": summary
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error getting conversation summary: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get conversation summary: {str(e)}")
+
+@app.get("/sentiment/realtime/{room_id}")
+async def get_realtime_sentiment(room_id: str):
+    """Get real-time sentiment data for a room"""
+    try:
+        # Get recent sentiment data from database
+        sentiment_data = await db_service.get_sentiment_data(room_id)
+        
+        if not sentiment_data:
+            return {
+                "room_id": room_id,
+                "current_sentiment": None,
+                "recent_analysis": []
+            }
+        
+        # Get the most recent sentiment
+        current_sentiment = sentiment_data[-1] if sentiment_data else None
+        
+        return {
+            "room_id": room_id,
+            "current_sentiment": current_sentiment,
+            "recent_analysis": sentiment_data[-10:],  # Last 10 analyses
+            "total_analyses": len(sentiment_data)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting real-time sentiment: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get real-time sentiment: {str(e)}")
+
+@app.delete("/sentiment/clear/{room_id}")
+async def clear_sentiment_history(room_id: str):
+    """Clear sentiment history for a room (for testing/debugging)"""
+    try:
+        if room_id in sentiment_engine.sentiment_history:
+            del sentiment_engine.sentiment_history[room_id]
+        
+        # Also clear from database
+        await db_service.clear_sentiment_data(room_id)
+        
+        return {
+            "message": f"Sentiment history cleared for room {room_id}",
+            "room_id": room_id
+        }
+        
+    except Exception as e:
+        logging.error(f"Error clearing sentiment history: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear sentiment history: {str(e)}")
+
+# Product Recommendation Endpoints
+@app.get("/recommendations/{customer_id}")
+async def get_product_recommendations(customer_id: str, conversation_context: str = "", max_recommendations: int = 5):
+    """Get personalized product recommendations for a customer"""
+    try:
+        recommendations = await recommendation_engine.get_recommendations(
+            customer_id=customer_id,
+            conversation_context=conversation_context,
+            max_recommendations=max_recommendations
+        )
+        
+        # Convert recommendations to dictionary format
+        recommendations_data = []
+        for rec in recommendations:
+            recommendations_data.append({
+                "book_id": rec.book.book_id,
+                "title": rec.book.title,
+                "author": rec.book.author,
+                "genre": rec.book.genre.value,
+                "price": rec.book.price,
+                "rating": rec.book.rating,
+                "description": rec.book.description,
+                "confidence_score": rec.confidence_score,
+                "reason": rec.reason,
+                "recommendation_type": rec.recommendation_type,
+                "discount_available": rec.discount_available,
+                "discount_percentage": rec.discount_percentage
+            })
+        
+        return {
+            "customer_id": customer_id,
+            "recommendations": recommendations_data,
+            "total_recommendations": len(recommendations_data)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting recommendations: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get recommendations: {str(e)}")
+
+@app.get("/books/search")
+async def search_books(query: str, genre: str = None, max_price: float = None):
+    """Search books by title, author, or description"""
+    try:
+        from product_recommendation import BookGenre
+        
+        genre_enum = None
+        if genre:
+            try:
+                genre_enum = BookGenre(genre)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid genre: {genre}")
+        
+        books = await recommendation_engine.search_books(
+            query=query,
+            genre=genre_enum,
+            max_price=max_price
+        )
+        
+        # Convert books to dictionary format
+        books_data = []
+        for book in books:
+            books_data.append({
+                "book_id": book.book_id,
+                "title": book.title,
+                "author": book.author,
+                "genre": book.genre.value,
+                "price": book.price,
+                "rating": book.rating,
+                "description": book.description,
+                "isbn": book.isbn,
+                "publication_year": book.publication_year,
+                "page_count": book.page_count,
+                "language": book.language,
+                "availability": book.availability,
+                "stock_quantity": book.stock_quantity,
+                "tags": book.tags
+            })
+        
+        return {
+            "query": query,
+            "books": books_data,
+            "total_results": len(books_data)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error searching books: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to search books: {str(e)}")
+
+@app.get("/books/{book_id}")
+async def get_book_details(book_id: str):
+    """Get detailed information about a specific book"""
+    try:
+        book = await recommendation_engine.get_book_by_id(book_id)
+        
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+        
+        return {
+            "book_id": book.book_id,
+            "title": book.title,
+            "author": book.author,
+            "genre": book.genre.value,
+            "price": book.price,
+            "rating": book.rating,
+            "description": book.description,
+            "isbn": book.isbn,
+            "publication_year": book.publication_year,
+            "page_count": book.page_count,
+            "language": book.language,
+            "availability": book.availability,
+            "stock_quantity": book.stock_quantity,
+            "tags": book.tags,
+            "similar_books": book.similar_books
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error getting book details: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get book details: {str(e)}")
+
+# Question Generation Endpoints
+@app.post("/questions/generate")
+async def generate_next_question(request: Dict[str, Any]):
+    """Generate the next appropriate question for a conversation"""
+    try:
+        room_id = request.get("room_id")
+        conversation_history = request.get("conversation_history", [])
+        sentiment_data = request.get("sentiment_data")
+        
+        if not room_id:
+            raise HTTPException(status_code=400, detail="room_id is required")
+        
+        if not QUESTION_GENERATOR_AVAILABLE:
+            raise HTTPException(status_code=503, detail="Question generator service not available")
+        
+        question = await question_generator.generate_question(
+            room_id=room_id,
+            conversation_history=conversation_history,
+            sentiment_data=sentiment_data
+        )
+        
+        if not question:
+            return {"question": None, "message": "No appropriate question found"}
+        
+        return {
+            "question": {
+                "question_id": question.question_id,
+                "text": question.text,
+                "question_type": question.question_type.value,
+                "conversation_stage": question.conversation_stage.value,
+                "context": question.context,
+                "expected_response_type": question.expected_response_type,
+                "follow_up_questions": question.follow_up_questions,
+                "success_indicators": question.success_indicators,
+                "objection_handling": question.objection_handling
+            }
+        }
+        
+    except Exception as e:
+        logging.error(f"Error generating question: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate question: {str(e)}")
+
+@app.post("/questions/handle-objection")
+async def handle_customer_objection(request: Dict[str, Any]):
+    """Handle customer objections with appropriate responses"""
+    try:
+        room_id = request.get("room_id")
+        objection_text = request.get("objection_text", "")
+        
+        if not room_id or not objection_text:
+            raise HTTPException(status_code=400, detail="room_id and objection_text are required")
+        
+        if not QUESTION_GENERATOR_AVAILABLE:
+            raise HTTPException(status_code=503, detail="Question generator service not available")
+        
+        # Get conversation context
+        context = question_generator.get_conversation_context(room_id)
+        if not context:
+            raise HTTPException(status_code=404, detail="Conversation context not found")
+        
+        # Handle objection
+        objection_response = await question_generator.handle_objection(objection_text, context)
+        
+        if not objection_response:
+            return {"response": None, "message": "No appropriate response found"}
+        
+        return {
+            "response": {
+                "objection_type": objection_response.objection_type.value,
+                "response_text": objection_response.response_text,
+                "technique": objection_response.technique,
+                "follow_up_questions": objection_response.follow_up_questions,
+                "confidence_boosters": objection_response.confidence_boosters
+            }
+        }
+        
+    except Exception as e:
+        logging.error(f"Error handling objection: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to handle objection: {str(e)}")
+
+@app.get("/questions/context/{room_id}")
+async def get_conversation_context(room_id: str):
+    """Get current conversation context for a room"""
+    try:
+        if not QUESTION_GENERATOR_AVAILABLE:
+            return {"context": None, "message": "Question generator service not available"}
+        
+        context = question_generator.get_conversation_context(room_id)
+        
+        if not context:
+            return {"context": None, "message": "No conversation context found"}
+        
+        return {
+            "context": {
+                "stage": context.stage.value,
+                "customer_sentiment": context.customer_sentiment,
+                "customer_engagement": context.customer_engagement,
+                "purchase_intent": context.purchase_intent,
+                "objection_level": context.objection_level,
+                "trust_level": context.trust_level,
+                "topics_discussed": context.topics_discussed,
+                "questions_asked_count": len(context.questions_asked),
+                "customer_responses_count": len(context.customer_responses),
+                "current_topic": context.current_topic,
+                "conversation_duration": context.conversation_duration
+            }
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting conversation context: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get conversation context: {str(e)}")
+
+@app.delete("/questions/clear-context/{room_id}")
+async def clear_conversation_context(room_id: str):
+    """Clear conversation context for a room"""
+    try:
+        if not QUESTION_GENERATOR_AVAILABLE:
+            raise HTTPException(status_code=503, detail="Question generator service not available")
+        
+        question_generator.clear_conversation_context(room_id)
+        
+        return {
+            "message": f"Conversation context cleared for room {room_id}",
+            "room_id": room_id
+        }
+        
+    except Exception as e:
+        logging.error(f"Error clearing conversation context: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear conversation context: {str(e)}")
+
+# Analytics Endpoints
+@app.get("/analytics/order/{room_id}")
+async def get_order_analytics(room_id: str):
+    """Get order details for analytics panel"""
+    try:
+        # Get order data from MongoDB
+        order_doc = await db_service.get_order(room_id)
+        
+        if not order_doc:
+            raise HTTPException(status_code=404, detail="No order data found for this room")
+        
+        # Format order data for frontend
+        order_details = {
+            "order_id": order_doc.get("order_id"),
+            "customer_name": order_doc.get("customer_name"),
+            "phone_number": order_doc.get("customer_id"),  # customer_id is the phone number
+            "book_title": order_doc.get("book_title"),
+            "author": order_doc.get("author"),
+            "quantity": order_doc.get("quantity", 1),
+            "price": order_doc.get("unit_price", 0),
+            "total_amount": order_doc.get("total_amount", 0),
+            "payment_method": order_doc.get("payment_method", "not_specified"),
+            "delivery_option": order_doc.get("delivery_option", "home_delivery"),
+            "status": order_doc.get("order_status", "pending"),
+            "created_at": order_doc.get("order_date", datetime.utcnow()).isoformat() if order_doc.get("order_date") else datetime.utcnow().isoformat()
+        }
+        
+        return order_details
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error getting order analytics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get order analytics: {str(e)}")
+
+@app.get("/analytics/sentiment/{room_id}")
+async def get_sentiment_analytics(room_id: str):
+    """Get sentiment analysis data for analytics panel"""
+    try:
+        # Get latest sentiment data from MongoDB
+        sentiment_data = await db_service.get_latest_sentiment(room_id)
+        
+        if not sentiment_data:
+            # Return default sentiment data if no data found
+            sentiment_response = {
+                "overall_sentiment": "neutral",
+                "confidence_score": 0.5,
+                "emotions": {
+                    "joy": 0.2,
+                    "anger": 0.1,
+                    "fear": 0.1,
+                    "sadness": 0.1,
+                    "surprise": 0.1
+                },
+                "key_phrases": ["conversation", "assistance"],
+                "conversation_stage": "initial"
+            }
+            return sentiment_response
+        
+        # Format sentiment data for frontend
+        sentiment_response = {
+            "overall_sentiment": sentiment_data.get("overall_sentiment", "neutral"),
+            "confidence_score": sentiment_data.get("confidence", 0.5),
+            "emotions": {
+                "joy": sentiment_data.get("emotions", {}).get("joy", 0),
+                "anger": sentiment_data.get("emotions", {}).get("anger", 0),
+                "fear": sentiment_data.get("emotions", {}).get("fear", 0),
+                "sadness": sentiment_data.get("emotions", {}).get("sadness", 0),
+                "surprise": sentiment_data.get("emotions", {}).get("surprise", 0)
+            },
+            "key_phrases": sentiment_data.get("key_phrases", []),
+            "conversation_stage": sentiment_data.get("conversation_stage", "initial")
+        }
+        
+        return sentiment_response
+        
+    except Exception as e:
+        logging.error(f"Error getting sentiment analytics: {e}")
+        # Return default data instead of error
+        return {
+            "overall_sentiment": "neutral",
+            "confidence_score": 0.5,
+            "emotions": {
+                "joy": 0.2,
+                "anger": 0.1,
+                "fear": 0.1,
+                "sadness": 0.1,
+                "surprise": 0.1
+            },
+            "key_phrases": ["conversation", "assistance"],
+            "conversation_stage": "initial"
+        }
+
+@app.get("/analytics/metrics/{room_id}")
+async def get_conversation_metrics(room_id: str):
+    """Get conversation metrics for analytics panel"""
+    try:
+        # Get transcripts to calculate metrics
+        transcripts = await db_service.get_transcripts(room_id)
+        
+        if not transcripts:
+            raise HTTPException(status_code=404, detail="No conversation data found for this room")
+        
+        # Calculate conversation metrics
+        total_words = sum(len(t.get("message", "").split()) for t in transcripts)
+        user_messages = [t for t in transcripts if t.get("role") == "user"]
+        assistant_messages = [t for t in transcripts if t.get("role") == "assistant"]
+        
+        # Calculate duration (difference between first and last message)
+        timestamps = [t.get("timestamp", 0) for t in transcripts if t.get("timestamp")]
+        duration = int(max(timestamps) - min(timestamps)) if len(timestamps) > 1 else 0
+        
+        # Calculate engagement (simple metric based on user interaction)
+        customer_engagement = min(100, len(user_messages) * 10) if user_messages else 0
+        
+        # Count questions and recommendations (simple keyword-based detection)
+        questions_asked = sum(1 for t in assistant_messages if "?" in t.get("message", ""))
+        recommendations_made = sum(1 for t in assistant_messages 
+                                 if any(word in t.get("message", "").lower() 
+                                       for word in ["recommend", "suggest", "try", "consider"]))
+        
+        # Count objections (simple keyword-based detection)
+        objections_handled = sum(1 for t in user_messages 
+                               if any(word in t.get("message", "").lower() 
+                                     for word in ["but", "however", "expensive", "not sure", "maybe"]))
+        
+        metrics_response = {
+            "duration": duration,
+            "total_words": total_words,
+            "customer_engagement": customer_engagement,
+            "objections_handled": objections_handled,
+            "questions_asked": questions_asked,
+            "recommendations_made": recommendations_made
+        }
+        
+        return metrics_response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error getting conversation metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get conversation metrics: {str(e)}")
+
+@app.get("/sentiment/summary/{room_id}")
+async def get_sentiment_summary(room_id: str):
+    """Get conversation sentiment summary"""
+    try:
+        # Get all sentiment data for this room
+        sentiment_records = await db_service.get_sentiment_data(room_id)
+        
+        if not sentiment_records:
+            # Return default summary when no sentiment data exists
+            return {
+                "summary": {
+                    "room_id": room_id,
+                    "total_messages_analyzed": 0,
+                    "overall_sentiment_trend": "neutral",
+                    "sentiment_distribution": {
+                        "positive": 33.3,
+                        "negative": 33.3,
+                        "neutral": 33.4
+                    },
+                    "average_confidence": 0.5,
+                    "average_engagement": 0.5,
+                    "average_satisfaction": 0.5,
+                    "average_purchase_intent": 0.3,
+                    "conversation_duration_seconds": 0,
+                    "analysis_timestamp": datetime.utcnow().isoformat(),
+                    "message": "No sentiment data available yet"
+                }
+            }
+        
+        # Get transcripts to calculate additional metrics
+        transcripts = await db_service.get_transcripts(room_id)
+        
+        # Calculate summary metrics
+        total_messages = len(sentiment_records)
+        
+        # Calculate sentiment distribution
+        sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0}
+        total_confidence = 0
+        total_engagement = 0
+        total_satisfaction = 0
+        total_purchase_intent = 0
+        
+        for record in sentiment_records:
+            sentiment = record.get("overall_sentiment", "neutral")
+            if sentiment in sentiment_counts:
+                sentiment_counts[sentiment] += 1
+            
+            total_confidence += record.get("confidence", 0)
+            total_engagement += record.get("engagement", 0)
+            total_satisfaction += record.get("satisfaction", 0)
+            total_purchase_intent += record.get("purchase_intent", 0)
+        
+        # Calculate averages
+        avg_confidence = total_confidence / total_messages if total_messages > 0 else 0.5
+        avg_engagement = total_engagement / total_messages if total_messages > 0 else 0.5
+        avg_satisfaction = total_satisfaction / total_messages if total_messages > 0 else 0.5
+        avg_purchase_intent = total_purchase_intent / total_messages if total_messages > 0 else 0.3
+        
+        # Determine overall sentiment trend
+        if sentiment_counts["positive"] > sentiment_counts["negative"]:
+            overall_trend = "positive"
+        elif sentiment_counts["negative"] > sentiment_counts["positive"]:
+            overall_trend = "negative"
+        else:
+            overall_trend = "neutral"
+        
+        # Calculate conversation duration
+        if transcripts and len(transcripts) > 1:
+            timestamps = [t.get("timestamp", 0) for t in transcripts if t.get("timestamp")]
+            duration = int(max(timestamps) - min(timestamps)) if len(timestamps) > 1 else 0
+        else:
+            duration = 0
+        
+        summary = {
+            "room_id": room_id,
+            "total_messages_analyzed": total_messages,
+            "overall_sentiment_trend": overall_trend,
+            "sentiment_distribution": {
+                "positive": round((sentiment_counts["positive"] / total_messages) * 100, 1) if total_messages > 0 else 33.3,
+                "negative": round((sentiment_counts["negative"] / total_messages) * 100, 1) if total_messages > 0 else 33.3,
+                "neutral": round((sentiment_counts["neutral"] / total_messages) * 100, 1) if total_messages > 0 else 33.4
+            },
+            "average_confidence": round(avg_confidence, 2),
+            "average_engagement": round(avg_engagement, 2),
+            "average_satisfaction": round(avg_satisfaction, 2),
+            "average_purchase_intent": round(avg_purchase_intent, 2),
+            "conversation_duration_seconds": duration,
+            "analysis_timestamp": datetime.utcnow().isoformat()
+        }
+        
+        return {"summary": summary}
+        
+    except Exception as e:
+        logging.error(f"Error getting sentiment summary: {e}")
+        # Return default summary on error instead of raising exception
+        return {
+            "summary": {
+                "room_id": room_id,
+                "total_messages_analyzed": 0,
+                "overall_sentiment_trend": "neutral",
+                "sentiment_distribution": {
+                    "positive": 33.3,
+                    "negative": 33.3,
+                    "neutral": 33.4
+                },
+                "average_confidence": 0.5,
+                "average_engagement": 0.5,
+                "average_satisfaction": 0.5,
+                "average_purchase_intent": 0.3,
+                "conversation_duration_seconds": 0,
+                "analysis_timestamp": datetime.utcnow().isoformat(),
+                "error": str(e)
+            }
+        }
+
+@app.post("/sentiment/analyze")
+async def analyze_sentiment(request: Dict[str, Any]):
+    """Analyze sentiment of a message"""
+    try:
+        message = request.get("message", "")
+        room_id = request.get("room_id", "")
+        
+        if not message:
+            raise HTTPException(status_code=400, detail="Message is required")
+        
+        if not SENTIMENT_AVAILABLE or sentiment_engine is None:
+            # Return default sentiment analysis when service is not available
+            return {
+                "sentiment": "neutral",
+                "confidence": 0.5,
+                "polarity": 0.0,
+                "subjectivity": 0.5,
+                "emotions": {
+                    "joy": 0.2,
+                    "anger": 0.1,
+                    "fear": 0.1,
+                    "sadness": 0.1,
+                    "surprise": 0.1
+                },
+                "engagement": 0.5,
+                "satisfaction": 0.5,
+                "purchase_intent": 0.3,
+                "message": "Sentiment analysis service not available"
+            }
+        
+        # If sentiment analysis is available, use it
+        sentiment_score = await sentiment_engine.analyze_message_sentiment(message, user_id=room_id)
+        
+        return {
+            "sentiment": sentiment_score.overall_sentiment.value,
+            "confidence": sentiment_score.confidence,
+            "polarity": sentiment_score.polarity,
+            "subjectivity": sentiment_score.subjectivity,
+            "emotions": sentiment_score.emotions,
+            "engagement": sentiment_score.engagement,
+            "satisfaction": sentiment_score.satisfaction,
+            "purchase_intent": sentiment_score.purchase_intent,
+        }
+        
+    except Exception as e:
+        logging.error(f"Error analyzing sentiment: {e}")
+        # Return neutral sentiment on error
+        return {
+            "sentiment": "neutral",
+            "confidence": 0.5,
+            "polarity": 0.0,
+            "subjectivity": 0.5,
+            "emotions": {
+                "joy": 0.2,
+                "anger": 0.1,
+                "fear": 0.1,
+                "sadness": 0.1,
+                "surprise": 0.1
+            },
+            "engagement": 0.5,
+            "satisfaction": 0.5,
+            "purchase_intent": 0.3,
+            "error": str(e)
+        }
+
+@app.get("/sentiment/shifts/{room_id}")
+async def get_sentiment_shifts(room_id: str):
+    """Get sentiment shifts for a conversation"""
+    try:
+        if not SENTIMENT_AVAILABLE or sentiment_engine is None:
+            return {"shifts": []}
+        
+        # Get sentiment shifts from the sentiment engine
+        shifts = sentiment_engine.detect_sentiment_shifts(room_id)
+        
+        shift_data = [
+            {
+                "previous_sentiment": shift.previous_sentiment.value,
+                "current_sentiment": shift.current_sentiment.value,
+                "shift_magnitude": shift.shift_magnitude,
+                "shift_direction": shift.shift_direction,
+                "trigger_phrases": shift.trigger_phrases,
+                "timestamp": shift.timestamp.isoformat(),
+                "confidence": shift.confidence
+            } for shift in shifts
+        ]
+        
+        return {"shifts": shift_data}
+        
+    except Exception as e:
+        logging.error(f"Error getting sentiment shifts: {e}")
+        return {"shifts": [], "error": str(e)}
+
+@app.delete("/sentiment/clear/{room_id}")
+async def clear_sentiment_data(room_id: str):
+    """Clear sentiment data for a room"""
+    try:
+        await db_service.clear_sentiment_data(room_id)
+        return {"message": f"Sentiment data cleared for room {room_id}"}
+        
+    except Exception as e:
+        logging.error(f"Error clearing sentiment data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear sentiment data: {str(e)}")
+
+@app.get("/sentiment/realtime/{room_id}")
+async def get_realtime_sentiment(room_id: str):
+    """Get real-time sentiment data for a room"""
+    try:
+        # Get latest sentiment data
+        latest_sentiment = await db_service.get_latest_sentiment(room_id)
+        
+        if not latest_sentiment:
+            return {
+                "current_sentiment": "neutral",
+                "confidence": 0.5,
+                "engagement": 0.5,
+                "satisfaction": 0.5,
+                "purchase_intent": 0.3,
+                "last_updated": datetime.utcnow().isoformat(),
+                "message": "No sentiment data available"
+            }
+        
+        return {
+            "current_sentiment": latest_sentiment.get("overall_sentiment", "neutral"),
+            "confidence": latest_sentiment.get("confidence", 0.5),
+            "engagement": latest_sentiment.get("engagement", 0.5),
+            "satisfaction": latest_sentiment.get("satisfaction", 0.5),
+            "purchase_intent": latest_sentiment.get("purchase_intent", 0.3),
+            "emotions": latest_sentiment.get("emotions", {}),
+            "last_updated": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting realtime sentiment: {e}")
+        return {
+            "current_sentiment": "neutral",
+            "confidence": 0.5,
+            "engagement": 0.5,
+            "satisfaction": 0.5,
+            "purchase_intent": 0.3,
+            "last_updated": datetime.utcnow().isoformat(),
+            "error": str(e)
+        }
+
+# ============================================
+# CALL SUMMARY ENDPOINTS - Module 4
+# ============================================
+
+@app.post("/api/call-summary/generate/{room_id}")
+async def generate_call_summary(room_id: str, manual_notes: Optional[str] = None):
+    """
+    Generate comprehensive call summary with insights
+    
+    This endpoint automatically:
+    - Extracts key points from call transcripts
+    - Identifies customer objections and concerns
+    - Tracks product/book interests
+    - Analyzes conversation flow and outcomes
+    - Provides actionable recommendations for improvement
+    """
+    try:
+        if not CALL_SUMMARY_AVAILABLE or summary_generator is None:
+            raise HTTPException(status_code=503, detail="Call summary generator not available")
+        
+        # Get transcripts from database
+        transcripts_raw = await db_service.get_transcripts(room_id)
+        if not transcripts_raw:
+            raise HTTPException(status_code=404, detail=f"No transcripts found for room {room_id}")
+        
+        # Convert to expected format
+        transcripts = [
+            {
+                "id": t.get("id"),
+                "role": t.get("role"),
+                "message": t.get("message"),
+                "timestamp": t.get("timestamp")
+            } for t in transcripts_raw
+        ]
+        
+        # Get order data
+        order_doc = await db_service.get_order(room_id)
+        order_data = None
+        if order_doc:
+            order_data = {
+                "order_id": order_doc.get("order_id"),
+                "customer_id": order_doc.get("customer_id"),
+                "customer_name": order_doc.get("customer_name"),
+                "book_title": order_doc.get("book_title"),
+                "author": order_doc.get("author"),
+                "genre": order_doc.get("genre"),
+                "quantity": order_doc.get("quantity"),
+                "unit_price": order_doc.get("unit_price"),
+                "total_amount": order_doc.get("total_amount"),
+                "payment_method": order_doc.get("payment_method"),
+                "delivery_option": order_doc.get("delivery_option"),
+                "delivery_address": order_doc.get("delivery_address"),
+                "order_status": order_doc.get("order_status", "pending"),
+                "order_date": order_doc.get("order_date"),
+                "special_requests": order_doc.get("special_requests"),
+            }
+        
+        # Get sentiment data
+        sentiment_data = await db_service.get_sentiment_data(room_id)
+        
+        # Generate summary
+        summary = await summary_generator.generate_summary(
+            room_id=room_id,
+            transcripts=transcripts,
+            order_data=order_data,
+            sentiment_data=sentiment_data,
+            manual_notes=manual_notes
+        )
+        
+        # Store summary in database
+        summary_dict = summary.to_dict()
+        await db_service.store_call_summary(room_id, summary_dict)
+        
+        logging.info(f"Generated and stored call summary for room {room_id}")
+        
+        return {
+            "message": "Call summary generated successfully",
+            "summary": summary_dict
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error generating call summary: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate call summary: {str(e)}")
+
+
+@app.get("/api/call-summary/{room_id}")
+async def get_call_summary(room_id: str):
+    """Get call summary for a specific room/call"""
+    try:
+        summary = await db_service.get_call_summary(room_id)
+        
+        if not summary:
+            raise HTTPException(status_code=404, detail=f"No call summary found for room {room_id}")
+        
+        return {
+            "summary": summary
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error getting call summary: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get call summary: {str(e)}")
+
+
+@app.get("/api/call-summaries/all")
+async def get_all_call_summaries(limit: int = 100):
+    """Get all call summaries (for admin/analytics)"""
+    try:
+        summaries = await db_service.get_all_call_summaries(limit=limit)
+        
+        return {
+            "total": len(summaries),
+            "summaries": summaries
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting all call summaries: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get call summaries: {str(e)}")
+
+
+@app.get("/api/call-summaries/by-outcome/{outcome}")
+async def get_summaries_by_outcome(outcome: str):
+    """
+    Get call summaries filtered by outcome
+    
+    Outcomes:
+    - success: Order placed successfully
+    - partial_success: Interest shown but no order
+    - no_sale: Customer decided not to purchase
+    - information_only: Just gathering information
+    """
+    try:
+        valid_outcomes = ["success", "partial_success", "no_sale", "information_only"]
+        if outcome not in valid_outcomes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid outcome. Must be one of: {', '.join(valid_outcomes)}"
+            )
+        
+        summaries = await db_service.get_summaries_by_outcome(outcome)
+        
+        return {
+            "outcome": outcome,
+            "total": len(summaries),
+            "summaries": summaries
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error getting summaries by outcome: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get summaries by outcome: {str(e)}")
+
+
+@app.delete("/api/call-summary/{room_id}")
+async def delete_call_summary(room_id: str):
+    """Delete call summary for a room"""
+    try:
+        deleted = await db_service.delete_call_summary(room_id)
+        
+        if not deleted:
+            raise HTTPException(status_code=404, detail=f"No call summary found for room {room_id}")
+        
+        return {
+            "message": f"Call summary deleted successfully for room {room_id}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error deleting call summary: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete call summary: {str(e)}")
+
+
+@app.post("/api/call-end-report/{room_id}")
+async def get_call_end_report(room_id: str, manual_notes: Optional[str] = None):
+    """
+    Generate complete call end report - Called when call ends
+    
+    Returns comprehensive report including:
+    1. Call Summary with actionable insights
+    2. Sentiment Analysis with journey and metrics
+    3. Complete Transcripts
+    4. Order Data (if available)
+    
+    This is the main endpoint to call when a call session ends.
+    """
+    try:
+        if not CALL_END_HANDLER_AVAILABLE or not CALL_SUMMARY_AVAILABLE:
+            raise HTTPException(
+                status_code=503, 
+                detail="Call end report generation not available"
+            )
+        
+        # Generate complete report
+        report = await generate_call_end_report(
+            room_id=room_id,
+            db_service=db_service,
+            summary_generator=summary_generator,
+            manual_notes=manual_notes
+        )
+        
+        logging.info(f"Call end report generated for room {room_id}")
+        
+        return {
+            "success": True,
+            "message": "Call end report generated successfully",
+            "report": report.to_dict()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error generating call end report: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to generate call end report: {str(e)}"
+        )
+
+
+@app.get("/api/call-summaries/analytics")
+async def get_call_summaries_analytics():
+    """
+    Get analytics and insights from all call summaries
+    
+    Provides aggregated metrics:
+    - Total calls analyzed
+    - Success rate
+    - Average customer satisfaction
+    - Common objections
+    - Top improvement areas
+    - Agent performance metrics
+    """
+    try:
+        summaries = await db_service.get_all_call_summaries(limit=1000)
+        
+        if not summaries:
+            return {
+                "total_calls": 0,
+                "message": "No call summaries available for analysis"
+            }
+        
+        # Calculate analytics
+        total_calls = len(summaries)
+        successful_calls = len([s for s in summaries if s.get("call_outcome") == "success"])
+        success_rate = (successful_calls / total_calls * 100) if total_calls > 0 else 0
+        
+        # Average satisfaction
+        satisfactions = [s.get("customer_satisfaction", 0) for s in summaries if s.get("customer_satisfaction")]
+        avg_satisfaction = sum(satisfactions) / len(satisfactions) if satisfactions else 0
+        
+        # Average objection handling score
+        objection_scores = [s.get("objection_handling_score", 0) for s in summaries if s.get("objection_handling_score") is not None]
+        avg_objection_handling = sum(objection_scores) / len(objection_scores) if objection_scores else 0
+        
+        # Count outcomes
+        outcomes = {}
+        for summary in summaries:
+            outcome = summary.get("call_outcome", "unknown")
+            outcomes[outcome] = outcomes.get(outcome, 0) + 1
+        
+        # Aggregate objections
+        all_objections = []
+        for summary in summaries:
+            objections = summary.get("objections_raised", [])
+            for obj in objections:
+                if isinstance(obj, dict):
+                    all_objections.append(obj.get("type", "unknown"))
+        
+        from collections import Counter
+        objection_counts = Counter(all_objections)
+        top_objections = [{"type": obj_type, "count": count} 
+                         for obj_type, count in objection_counts.most_common(5)]
+        
+        # Aggregate improvement areas
+        all_improvements = []
+        for summary in summaries:
+            improvements = summary.get("improvement_areas", [])
+            all_improvements.extend(improvements)
+        
+        improvement_counts = Counter(all_improvements)
+        top_improvements = [{"area": area, "count": count} 
+                          for area, count in improvement_counts.most_common(5)]
+        
+        # Agent performance distribution
+        performance_levels = {"excellent": 0, "good": 0, "needs_improvement": 0}
+        for summary in summaries:
+            quality = summary.get("agent_response_quality", "")
+            if quality in performance_levels:
+                performance_levels[quality] += 1
+        
+        # Average recommendations made
+        recommendations = [s.get("recommendations_made", 0) for s in summaries]
+        avg_recommendations = sum(recommendations) / len(recommendations) if recommendations else 0
+        
+        return {
+            "total_calls": total_calls,
+            "success_rate": round(success_rate, 2),
+            "average_satisfaction": round(avg_satisfaction, 2),
+            "average_objection_handling_score": round(avg_objection_handling, 2),
+            "average_recommendations_made": round(avg_recommendations, 2),
+            "outcomes_distribution": outcomes,
+            "top_objections": top_objections,
+            "top_improvement_areas": top_improvements,
+            "agent_performance_distribution": performance_levels,
+            "analysis_date": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logging.error(f"Error generating call summaries analytics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate analytics: {str(e)}")

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design System - Component Showcase</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Design System -->
+  <link rel="stylesheet" href="./design-tokens.css">
+  <link rel="stylesheet" href="./components.css">
+  
+  <style>
+    body {
+      font-family: var(--font-primary);
+      margin: 0;
+      padding: 0;
+      background: var(--color-bg-secondary);
+      background:
+        radial-gradient(
+          1200px 600px at 120% -10%,
+          color-mix(in srgb, #7C4DFF 4%, transparent),
+          transparent
+        ),
+        radial-gradient(
+          900px 500px at -20% 0%,
+          color-mix(in srgb, #FF3CA6 3%, transparent),
+          transparent
+        ),
+        var(--color-bg-secondary);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: var(--space-8);
+    }
+    
+    .section {
+      margin-bottom: var(--space-16);
+    }
+    
+    .section-title {
+      font-size: var(--font-size-3xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-text-primary);
+      margin-bottom: var(--space-6);
+    }
+    
+    .section-description {
+      font-size: var(--font-size-base);
+      color: var(--color-text-secondary);
+      margin-bottom: var(--space-8);
+      line-height: var(--line-height-relaxed);
+    }
+    
+    .component-row {
+      display: flex;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-6);
+    }
+    
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--space-6);
+    }
+    
+    .code-preview {
+      background: var(--color-bg-tertiary);
+      padding: var(--space-4);
+      border-radius: var(--radius-lg);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+      overflow-x: auto;
+      margin-top: var(--space-4);
+    }
+    
+    header {
+      text-align: center;
+      padding: var(--space-16) var(--space-6);
+      border-bottom: 1px solid var(--color-border-default);
+      margin-bottom: var(--space-12);
+    }
+    
+    .theme-toggle {
+      position: fixed;
+      top: var(--space-6);
+      right: var(--space-6);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <!-- Theme Toggle -->
+  <button class="cta-secondary theme-toggle" onclick="toggleTheme()">
+    🌙 Toggle Dark Mode
+  </button>
+
+  <!-- Header -->
+  <header>
+    <h1 class="hero-title" style="margin-bottom: var(--space-4);">
+      <span class="text-gradient">AI Sales Call Assistant</span>
+      <br>Design System
+    </h1>
+    <p class="hero-subtitle">
+      Modern, premium UI components with glassmorphism and delightful micro-interactions
+    </p>
+  </header>
+
+  <div class="container">
+    
+    <!-- Buttons Section -->
+    <section class="section">
+      <h2 class="section-title">Buttons</h2>
+      <p class="section-description">
+        Primary and secondary CTAs with hover, focus, and active states. All animations are smooth and responsive.
+      </p>
+      
+      <div class="component-row">
+        <button class="cta-primary">Primary Button</button>
+        <button class="cta-primary large">Large Primary</button>
+        <button class="cta-primary small">Small Primary</button>
+        <button class="cta-primary" disabled>Disabled</button>
+      </div>
+      
+      <div class="component-row">
+        <button class="cta-secondary">Secondary Button</button>
+        <button class="cta-secondary large">Large Secondary</button>
+        <button class="cta-secondary small">Small Secondary</button>
+      </div>
+      
+      <div class="component-row">
+        <button class="cta-primary full-width">Full Width Button</button>
+      </div>
+    </section>
+
+    <!-- Cards Section -->
+    <section class="section">
+      <h2 class="section-title">Glass Cards</h2>
+      <p class="section-description">
+        Glassmorphic cards with backdrop blur, subtle borders, and interactive hover states.
+      </p>
+      
+      <div class="grid-3">
+        <div class="card interactive accent-purple">
+          <h3 style="margin: 0 0 var(--space-3) 0; font-size: var(--font-size-xl); color: var(--color-text-primary);">
+            Smart Recommendations
+          </h3>
+          <p style="margin: 0; color: var(--color-text-secondary); line-height: var(--line-height-relaxed);">
+            AI-powered book suggestions based on real-time conversation analysis and customer preferences.
+          </p>
+        </div>
+        
+        <div class="card interactive accent-pink">
+          <h3 style="margin: 0 0 var(--space-3) 0; font-size: var(--font-size-xl); color: var(--color-text-primary);">
+            Real-time Analysis
+          </h3>
+          <p style="margin: 0; color: var(--color-text-secondary); line-height: var(--line-height-relaxed);">
+            Track customer sentiment, engagement levels, and purchase intent during live conversations.
+          </p>
+        </div>
+        
+        <div class="card interactive accent-green">
+          <h3 style="margin: 0 0 var(--space-3) 0; font-size: var(--font-size-xl); color: var(--color-text-primary);">
+            Call Transcripts
+          </h3>
+          <p style="margin: 0; color: var(--color-text-secondary); line-height: var(--line-height-relaxed);">
+            Detailed conversation records with timestamps, speaker identification, and key insights.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chat Interface Section -->
+    <section class="section">
+      <h2 class="section-title">Chat Interface</h2>
+      <p class="section-description">
+        Chat bubbles with slide-in animations, typing indicators, and proper message alignment.
+      </p>
+      
+      <div class="card" style="max-width: 600px;">
+        <div class="chat-container">
+          <div class="bubble-agent">
+            Hello! How can I help you find the perfect book today?
+          </div>
+          
+          <div class="bubble-user">
+            I'm looking for mystery novels with strong female leads.
+          </div>
+          
+          <div class="bubble-agent">
+            Excellent choice! Based on your preference, I'd recommend "The Girl with the Dragon Tattoo" by Stieg Larsson. It features Lisbeth Salander, one of the most iconic female protagonists in mystery fiction. Would you like to hear more about it?
+          </div>
+          
+          <div class="bubble-user">
+            Yes, that sounds interesting!
+          </div>
+          
+          <div class="typing-indicator">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Input Fields Section -->
+    <section class="section">
+      <h2 class="section-title">Input Fields</h2>
+      <p class="section-description">
+        Form inputs with focus states, validation feedback, and smooth animations.
+      </p>
+      
+      <div style="max-width: 500px;">
+        <div style="margin-bottom: var(--space-4);">
+          <label style="display: block; margin-bottom: var(--space-2); color: var(--color-text-secondary); font-weight: var(--font-weight-medium);">
+            Default Input
+          </label>
+          <input type="text" class="input" placeholder="Enter your name...">
+        </div>
+        
+        <div style="margin-bottom: var(--space-4);">
+          <label style="display: block; margin-bottom: var(--space-2); color: var(--color-text-secondary); font-weight: var(--font-weight-medium);">
+            Success State
+          </label>
+          <input type="text" class="input success" value="valid@email.com">
+        </div>
+        
+        <div style="margin-bottom: var(--space-4);">
+          <label style="display: block; margin-bottom: var(--space-2); color: var(--color-text-secondary); font-weight: var(--font-weight-medium);">
+            Error State
+          </label>
+          <input type="text" class="input error" placeholder="Required field">
+        </div>
+        
+        <div>
+          <label style="display: block; margin-bottom: var(--space-2); color: var(--color-text-secondary); font-weight: var(--font-weight-medium);">
+            Textarea
+          </label>
+          <textarea class="input textarea" placeholder="Your feedback..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Transcript Cards Section -->
+    <section class="section">
+      <h2 class="section-title">Transcript Cards</h2>
+      <p class="section-description">
+        Timeline-style transcript entries with speaker avatars and accent borders.
+      </p>
+      
+      <div style="max-width: 700px;">
+        <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+          <div class="transcript-card agent">
+            <div class="transcript-time">3:45</div>
+            <div class="transcript-content">
+              <div class="transcript-speaker">
+                <div class="transcript-avatar"></div>
+                AI Agent
+              </div>
+              <div class="transcript-message">
+                Based on your interest in mystery novels with strong female leads, I recommend "The Silent Patient" by Alex Michaelides. It's a psychological thriller that's been getting excellent reviews.
+              </div>
+            </div>
+          </div>
+          
+          <div class="transcript-card customer">
+            <div class="transcript-time">3:52</div>
+            <div class="transcript-content">
+              <div class="transcript-speaker">
+                <div class="transcript-avatar" style="background: var(--gradient-primary-end);"></div>
+                Customer
+              </div>
+              <div class="transcript-message">
+                That sounds perfect! What's the price and do you have it in stock?
+              </div>
+            </div>
+          </div>
+          
+          <div class="transcript-card agent">
+            <div class="transcript-time">3:55</div>
+            <div class="transcript-content">
+              <div class="transcript-speaker">
+                <div class="transcript-avatar"></div>
+                AI Agent
+              </div>
+              <div class="transcript-message">
+                Great choice! The book is priced at $16.99 and we have it in stock. We also have the audiobook version for $24.99 if you're interested. Would you like to proceed with the order?
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rating Component Section -->
+    <section class="section">
+      <h2 class="section-title">Rating Component</h2>
+      <p class="section-description">
+        Interactive star rating with hover effects and fill animations.
+      </p>
+      
+      <div class="card" style="max-width: 400px; text-align: center;">
+        <h3 style="margin: 0 0 var(--space-4) 0;">Rate Your Experience</h3>
+        <div class="rating" style="justify-content: center; margin-bottom: var(--space-4);">
+          <svg class="rating-star filled" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          <svg class="rating-star filled" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          <svg class="rating-star filled" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          <svg class="rating-star" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          <svg class="rating-star" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        </div>
+        <p style="color: var(--color-text-secondary); margin: 0;">3 out of 5 stars</p>
+      </div>
+    </section>
+
+    <!-- Status Indicators Section -->
+    <section class="section">
+      <h2 class="section-title">Status Indicators</h2>
+      <p class="section-description">
+        Status badges for showing active states, online/offline, etc.
+      </p>
+      
+      <div class="component-row">
+        <span class="status-indicator active">Active Call</span>
+        <span class="status-indicator inactive">Offline</span>
+      </div>
+    </section>
+
+    <!-- Loading States Section -->
+    <section class="section">
+      <h2 class="section-title">Loading States</h2>
+      <p class="section-description">
+        Skeleton loaders with shimmer animation for better perceived performance.
+      </p>
+      
+      <div class="card" style="max-width: 400px;">
+        <div class="skeleton" style="height: 24px; width: 60%; margin-bottom: var(--space-3);"></div>
+        <div class="skeleton" style="height: 16px; width: 100%; margin-bottom: var(--space-2);"></div>
+        <div class="skeleton" style="height: 16px; width: 90%; margin-bottom: var(--space-2);"></div>
+        <div class="skeleton" style="height: 16px; width: 75%;"></div>
+      </div>
+    </section>
+
+    <!-- Color Palette Section -->
+    <section class="section">
+      <h2 class="section-title">Color Palette</h2>
+      <p class="section-description">
+        Primary gradient, semantic colors, and neutral grays.
+      </p>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-4);">
+        <div style="text-align: center;">
+          <div style="height: 100px; background: var(--gradient-primary); border-radius: var(--radius-lg); margin-bottom: var(--space-2);"></div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Primary Gradient</div>
+        </div>
+        
+        <div style="text-align: center;">
+          <div style="height: 100px; background: var(--color-success); border-radius: var(--radius-lg); margin-bottom: var(--space-2);"></div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Success</div>
+        </div>
+        
+        <div style="text-align: center;">
+          <div style="height: 100px; background: var(--color-error); border-radius: var(--radius-lg); margin-bottom: var(--space-2);"></div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Error</div>
+        </div>
+        
+        <div style="text-align: center;">
+          <div style="height: 100px; background: var(--color-warning); border-radius: var(--radius-lg); margin-bottom: var(--space-2);"></div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Warning</div>
+        </div>
+        
+        <div style="text-align: center;">
+          <div style="height: 100px; background: var(--color-info); border-radius: var(--radius-lg); margin-bottom: var(--space-2);"></div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Info</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: var(--space-12) 0; border-top: 1px solid var(--color-border-default); margin-top: var(--space-16);">
+      <p style="color: var(--color-text-secondary); margin-bottom: var(--space-4);">
+        AI Sales Call Assistant Design System v2.0
+      </p>
+      <div class="component-row" style="justify-content: center;">
+        <button class="cta-secondary" onclick="window.open('DESIGN_SYSTEM.md')">
+          📚 Full Documentation
+        </button>
+        <button class="cta-secondary" onclick="window.open('QUICK_REFERENCE.md')">
+          ⚡ Quick Reference
+        </button>
+        <button class="cta-secondary" onclick="window.open('ANIMATION_SPEC.md')">
+          🎬 Animation Specs
+        </button>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // Theme toggle functionality
+    function toggleTheme() {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+    
+    // Load saved theme
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+    
+    // Add interactive rating demo
+    document.querySelectorAll('.rating-star').forEach((star, index) => {
+      star.addEventListener('click', function() {
+        const stars = this.closest('.rating').querySelectorAll('.rating-star');
+        stars.forEach((s, i) => {
+          if (i <= index) {
+            s.classList.add('filled');
+          } else {
+            s.classList.remove('filled');
+          }
+        });
+      });
+      
+      star.addEventListener('mouseenter', function() {
+        const stars = this.closest('.rating').querySelectorAll('.rating-star');
+        stars.forEach((s, i) => {
+          if (i <= index) {
+            s.classList.add('hover');
+          } else {
+            s.classList.remove('hover');
+          }
+        });
+      });
+      
+      star.closest('.rating').addEventListener('mouseleave', function() {
+        this.querySelectorAll('.rating-star').forEach(s => s.classList.remove('hover'));
+      });
+    });
+  </script>
+</body>
+</html>
