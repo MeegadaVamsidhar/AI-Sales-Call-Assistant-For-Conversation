@@ -1,8 +1,8 @@
-# 🔧 FastAPI Backend
+# FastAPI Backend
 
 RESTful API backend for the AI Sales Call Assistant with MongoDB integration, admin management, and order processing.
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 backend/
@@ -25,7 +25,7 @@ backend/
 └── requirements.txt   # Python dependencies
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Setup Virtual Environment
 
@@ -81,7 +81,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 python start_server.py
 ```
 
-## 📖 API Endpoints
+## API Endpoints
 
 ### Authentication
 - `POST /api/auth/admin/register` - Admin registration
@@ -111,12 +111,12 @@ python start_server.py
 - `GET /health` - Service health check
 - `GET /docs` - Interactive API documentation (Swagger UI)
 
-## 🔑 API Keys Required
+## API Keys Required
 
-1. **LiveKit** - [livekit.io](https://livekit.io/) → Dashboard → Settings → Keys
-2. **Gmail App Password** - Google Account → Security → App Passwords
+1. **LiveKit** - [livekit.io](https://livekit.io/) -> Dashboard -> Settings -> Keys
+2. **Gmail App Password** - Google Account -> Security -> App Passwords
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run specific tests
@@ -125,7 +125,7 @@ python tests/test_mongodb.py
 python tests/test_email.py
 ```
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Port Already in Use
 ```bash
@@ -147,13 +147,13 @@ lsof -ti:8000 | xargs kill -9
 - Use Gmail App Password (not regular password)
 - Check firewall/antivirus settings
 
-## 📊 Access Points
+## Access Points
 
 - **API Documentation**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/health
 - **Admin Dashboard**: http://localhost:8000/admin (if configured)
 
-## 🔒 Security Notes
+## Security Notes
 
 - Never commit `.env` files
 - Use App Passwords for Gmail

@@ -1,13 +1,13 @@
-# 🚀 AI Sales Call Assistant for Book Sales
+# AI Sales Call Assistant for Book Sales
 
 A comprehensive AI-powered sales assistant system that enables voice-based book consultations with real-time transcription, order processing, and admin management capabilities.
 
-> 📚 **Quick Links to Component Documentation:**
-> - [📖 Backend README](./backend/README.md) - FastAPI server setup & API docs
-> - [📖 Agent README](./agent/README.md) - Voice AI agent configuration
-> - [📖 Frontend README](./agent-starter-react/README.md) - Next.js app setup
+> **Quick Links to Component Documentation:**
+> - [Backend README](./backend/README.md) - FastAPI server setup & API docs
+> - [Agent README](./agent/README.md) - Voice AI agent configuration
+> - [Frontend README](./agent-starter-react/README.md) - Next.js app setup
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
@@ -24,32 +24,32 @@ A comprehensive AI-powered sales assistant system that enables voice-based book 
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
-## 🎯 Overview
+## Overview
 
 The AI Sales Call Assistant is a modern, full-stack application designed to revolutionize book sales through AI-powered voice interactions. The system combines real-time voice processing, intelligent conversation analysis, and automated order management to create a seamless sales experience.
 
 ### Key Components
 
-1. **🎤 Voice AI Agent** - LiveKit-powered voice assistant with Deepgram STT/TTS
-2. **🔧 FastAPI Backend** - RESTful API with MongoDB integration
-3. **🌐 Next.js Frontend** - Modern React-based user interface
-4. **👤 Admin System** - Comprehensive admin management with email verification
+1. **Voice AI Agent** - LiveKit-powered voice assistant with Deepgram STT/TTS
+2. **FastAPI Backend** - RESTful API with MongoDB integration
+3. **Next.js Frontend** - Modern React-based user interface
+4. **Admin System** - Comprehensive admin management with email verification
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Next.js       │    │   FastAPI       │    │   LiveKit       │
-│   Frontend      │◄──►│   Backend       │◄──►│   Agent         │
-│   (Port 3000)   │    │   (Port 8000)   │    │   (Voice AI)    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   User          │    │   MongoDB       │    │   Deepgram      │
-│   Interface     │    │   Database      │    │   STT/TTS       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
++-----------------+    +-----------------+    +-----------------+
+|   Next.js       |    |   FastAPI       |    |   LiveKit       |
+|   Frontend      |<-->|   Backend       |<-->|   Agent         |
+|   (Port 3000)   |    |   (Port 8000)   |    |   (Voice AI)    |
++-----------------+    +-----------------+    +-----------------+
+         |                       |                       |
+         |                       |                       |
+         v                       v                       v
++-----------------+    +-----------------+    +-----------------+
+|   User          |    |   MongoDB       |    |   Deepgram      |
+|   Interface     |    |   Database      |    |   STT/TTS       |
++-----------------+    +-----------------+    +-----------------+
 ```
 
 ### Technology Stack
@@ -61,16 +61,16 @@ The AI Sales Call Assistant is a modern, full-stack application designed to revo
 - **Authentication**: NextAuth.js with email verification
 - **Email**: SMTP with HTML templates
 
-## ✨ Features
+## Features
 
-- **🎤 Real-time Voice AI** - Natural conversation with intelligent order processing
-- **📊 Post-Call Analytics** - Automatic summaries, sentiment analysis, and transcripts
-- **🤖 AI Personalization** - Context-aware recommendations based on user profiles (Regular vs VIP)
-- **👤 User Switching** - Toggle between different customer profiles to demonstrate personalization
-- **👤 Admin Dashboard** - Secure registration, order management, and analytics
-- **🔒 Security** - Email verification, password hashing, rate limiting, CORS protection
+- **Real-time Voice AI** - Natural conversation with intelligent order processing
+- **Post-Call Analytics** - Automatic summaries, sentiment analysis, and transcripts
+- **AI Personalization** - Context-aware recommendations based on user profiles (Regular vs VIP)
+- **User Switching** - Toggle between different customer profiles to demonstrate personalization
+- **Admin Dashboard** - Secure registration, order management, and analytics
+- **Security** - Email verification, password hashing, rate limiting, CORS protection
 
-## 📋 Prerequisites
+## Prerequisites
 
 ### System Requirements
 - **Node.js** 18+ and npm/pnpm
@@ -84,9 +84,9 @@ The AI Sales Call Assistant is a modern, full-stack application designed to revo
 - **Google Gemini** API for LLM
 - **SMTP Server** for email notifications
 
-## 🔐 Environment Setup
+## Environment Setup
 
-### 🚨 Important: Secure Your Credentials
+### Important: Secure Your Credentials
 
 This project uses environment variables to store sensitive information. **Never commit `.env` files to version control.**
 
@@ -148,40 +148,40 @@ GOOGLE_LLM_MODEL=gemini-2.0-flash-001
 ADMIN_EMAIL=your_admin_email@gmail.com
 ```
 
-### 🔑 How to Get API Keys
+### How to Get API Keys
 
-1. **LiveKit**: Sign up at [livekit.io](https://livekit.io/) → Dashboard → Settings → Keys
-2. **Deepgram**: Sign up at [deepgram.com](https://deepgram.com/) → API Keys → Create New Key
-3. **Google Gemini**: Visit [ai.google.dev](https://ai.google.dev/) → Get API Key
+1. **LiveKit**: Sign up at [livekit.io](https://livekit.io/) -> Dashboard -> Settings -> Keys
+2. **Deepgram**: Sign up at [deepgram.com](https://deepgram.com/) -> API Keys -> Create New Key
+3. **Google Gemini**: Visit [ai.google.dev](https://ai.google.dev/) -> Get API Key
 4. **Gmail App Password**: 
    - Enable 2FA on your Google account
-   - Go to Google Account Settings → Security → App Passwords
+   - Go to Google Account Settings -> Security -> App Passwords
    - Generate app password for "Mail"
 
-### ⚠️ Security Notes
+### Security Notes
 
 - **Never commit `.env` files** - They're already in `.gitignore`
 - **Use App Passwords** for Gmail, not your regular password
 - **Rotate keys regularly** for production use
 - **Use different credentials** for development and production
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Manual Setup
 
 See [Manual Setup](#manual-setup) section below.
 
-## 🔧 Manual Setup
+## Manual Setup
 
-### 📚 Component Documentation
+### Component Documentation
 
 Each component has its own detailed README with comprehensive setup instructions:
 
 | Component | Description | Documentation |
 |-----------|-------------|---------------|
-| **Backend** | FastAPI server, database, API endpoints | [📖 Backend README](./backend/README.md) |
-| **Agent** | LiveKit voice AI with Deepgram & Gemini | [📖 Agent README](./agent/README.md) |
-| **Frontend** | Next.js React application | [📖 Frontend README](./agent-starter-react/README.md) |
+| **Backend** | FastAPI server, database, API endpoints | [Backend README](./backend/README.md) |
+| **Agent** | LiveKit voice AI with Deepgram & Gemini | [Agent README](./agent/README.md) |
+| **Frontend** | Next.js React application | [Frontend README](./agent-starter-react/README.md) |
 
 ### Quick Setup Summary
 
@@ -207,9 +207,9 @@ cp .env.example .env  # Configure your credentials
 python app.py dev
 ```
 
-> 💡 **See individual README files for detailed setup instructions, troubleshooting, and configuration options.**
+> **See individual README files for detailed setup instructions, troubleshooting, and configuration options.**
 
-## 👤 Admin Registration System
+## Admin Registration System
 
 Secure multi-step registration process:
 
@@ -219,7 +219,7 @@ Secure multi-step registration process:
 4. **Login** - Use Employee ID + Password to access dashboard
 
 
-## 📖 API Documentation
+## API Documentation
 
 Complete API documentation available at: **http://localhost:8000/docs** (Swagger UI)
 
@@ -231,27 +231,27 @@ Complete API documentation available at: **http://localhost:8000/docs** (Swagger
 - **Feedback** - Submit and retrieve customer feedback
 - **Post-Call** - Automatic summaries, sentiment analysis, transcripts
 
-> 📚 **For detailed API endpoints and data models, see [Backend README](./backend/README.md)**
+> **For detailed API endpoints and data models, see [Backend README](./backend/README.md)**
 
-## 🔍 Service URLs
+## Service URLs
 
 After starting all services:
 
-- **🌐 Main Application**: http://localhost:3000
-- **👤 Admin Registration**: http://localhost:3000/auth/admin-signup
-- **🔐 Admin Login**: http://localhost:3000/auth/login
-- **📊 Call Summary**: http://localhost:3000/call-summary/{roomId}
-- **⭐ Feedback**: http://localhost:3000/feedback/{roomId}
-- **📖 API Documentation**: http://localhost:8000/docs
-- **❤️ Health Check**: http://localhost:8000/health
+- **Main Application**: http://localhost:3000
+- **Admin Registration**: http://localhost:3000/auth/admin-signup
+- **Admin Login**: http://localhost:3000/auth/login
+- **Call Summary**: http://localhost:3000/call-summary/{roomId}
+- **Feedback**: http://localhost:3000/feedback/{roomId}
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
 
-## 🎨 UI/UX Features
+## UI/UX Features
 
 - **Dark Mode** - Modern slate color palette optimized for readability
 - **Responsive Design** - Mobile-first approach with adaptive layouts
 - **User Experience** - Smooth transitions, loading states, and toast notifications
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -292,12 +292,12 @@ curl -X POST http://localhost:8000/api/auth/admin/register \
   -d '{"name":"Test","email":"test@example.com","password":"test123"}'
 ```
 
-> 💡 **For component-specific troubleshooting, see individual README files:**
+> **For component-specific troubleshooting, see individual README files:**
 > - [Backend Troubleshooting](./backend/README.md#troubleshooting)
 > - [Agent Troubleshooting](./agent/README.md#troubleshooting)
 > - [Frontend Troubleshooting](./agent-starter-react/README.md#troubleshooting)
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Springboard04_11/
@@ -308,27 +308,27 @@ Springboard04_11/
 │   ├── tests/           # Test files
 │   ├── main.py          # Main API application
 │   ├── requirements.txt # Python dependencies
-│   └── README.md        # 📖 Backend setup guide
+│   └── README.md        # Backend setup guide
 │
 ├── agent/                # LiveKit Voice Agent
 │   ├── app.py           # Main agent application
 │   ├── requirements.txt # Python dependencies
-│   └── README.md        # 📖 Agent setup guide
+│   └── README.md        # Agent setup guide
 │
 ├── agent-starter-react/  # Next.js Frontend (Port 3000)
 │   ├── app/             # Next.js App Router pages
 │   ├── components/      # React components
 │   ├── hooks/           # Custom React hooks
 │   ├── package.json     # Node dependencies
-│   └── README.md        # 📖 Frontend setup guide
+│   └── README.md        # Frontend setup guide
 │
-└── README.md            # 📖 Main project documentation
+└── README.md            # Main project documentation
 ```
 
-> 📚 **Each component has its own detailed README with setup instructions, API documentation, and troubleshooting guides.**
+> **Each component has its own detailed README with setup instructions, API documentation, and troubleshooting guides.**
 
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
@@ -336,11 +336,11 @@ Springboard04_11/
 4. Push to branch: `git push origin feature/amazing-feature`
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🆘 Support
+## Support
 
 For support and questions:
 - Check the [Troubleshooting](#troubleshooting) section
@@ -351,17 +351,17 @@ For support and questions:
 
 ---
 
-## 🎯 Getting Started
+## Getting Started
 
 **New to the project?** Follow these steps:
 
-1. **📖 Read the Overview** - Understand the architecture and features above
-2. **⚙️ Setup Environment** - Configure API keys using the [Environment Setup](#environment-setup) guide
-3. **🚀 Quick Start** - Run the automated setup script or follow manual setup
-4. **📚 Component Docs** - Dive into individual component READMEs for detailed information:
+1. **Read the Overview** - Understand the architecture and features above
+2. **Setup Environment** - Configure API keys using the [Environment Setup](#environment-setup) guide
+3. **Quick Start** - Run the automated setup script or follow manual setup
+4. **Component Docs** - Dive into individual component READMEs for detailed information:
    - [Backend README](./backend/README.md) - API endpoints, database setup, testing
    - [Agent README](./agent/README.md) - Voice AI configuration, model selection
    - [Frontend README](./agent-starter-react/README.md) - UI components, pages, deployment
-5. **🌐 Access Application** - Visit http://localhost:3000 and start using the AI assistant!
+5. **Access Application** - Visit http://localhost:3000 and start using the AI assistant!
 
-**Happy coding! 🚀**
+**Happy coding!**

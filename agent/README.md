@@ -1,8 +1,8 @@
-# 🎤 LiveKit Voice AI Agent
+# LiveKit Voice AI Agent
 
 Real-time voice assistant powered by LiveKit, Deepgram STT/TTS, and Google Gemini LLM for intelligent book sales conversations.
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 agent/
@@ -12,7 +12,7 @@ agent/
 └── venv/              # Virtual environment
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Setup Virtual Environment
 
@@ -70,11 +70,11 @@ python app.py dev
 python app.py start
 ```
 
-## 🔑 API Keys Required
+## API Keys Required
 
 ### 1. LiveKit
 - Sign up at [livekit.io](https://livekit.io/)
-- Navigate to Dashboard → Settings → Keys
+- Navigate to Dashboard -> Settings -> Keys
 - Copy URL, API Key, and API Secret
 
 ### 2. Deepgram
@@ -87,7 +87,7 @@ python app.py start
 - Click "Get API Key"
 - Create new API key
 
-## 🎯 Features
+## Features
 
 - **Real-time Voice Processing** - Natural conversation with customers
 - **Speech-to-Text** - Powered by Deepgram Nova-3 model
@@ -96,7 +96,7 @@ python app.py start
 - **Order Processing** - Intelligent extraction of customer details
 - **Personalized Recommendations** - AI-driven book suggestions
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Agent Won't Start
 - Verify all API keys in `.env`
@@ -113,7 +113,7 @@ python app.py start
 - Check internet connection stability
 - Verify microphone permissions
 
-## 📊 Available Models
+## Available Models
 
 ### Deepgram STT Models
 - `nova-3` - Latest, most accurate (recommended)
@@ -139,7 +139,7 @@ python app.py start
 - `gemini-1.5-pro` - Most capable
 - `gemini-1.5-flash` - Fast and efficient
 
-## 🔒 Security Notes
+## Security Notes
 
 - Never commit `.env` files
 - Keep API keys secure and rotate regularly

@@ -1,8 +1,8 @@
-# 🌐 Next.js Frontend
+# Next.js Frontend
 
 Modern React-based user interface for the AI Sales Call Assistant with real-time voice interaction, admin dashboard, and order management.
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 agent-starter-react/
@@ -21,7 +21,7 @@ agent-starter-react/
 └── package.json      # Node dependencies
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -73,7 +73,7 @@ npm run dev
 
 Visit http://localhost:3000 to see the application.
 
-## 🎯 Key Features
+## Key Features
 
 - **Voice Interaction** - Real-time AI voice assistant for book sales
 - **User Switching** - Toggle between customer profiles (e.g., John Smith vs Sarah Johnson) to see personalized recommendations
@@ -83,7 +83,7 @@ Visit http://localhost:3000 to see the application.
 - **Dark Mode** - Modern slate color palette
 - **Responsive Design** - Mobile-first approach
 
-## 📄 Main Pages
+## Main Pages
 
 ### Public Pages
 - `/` - Home page with voice assistant
@@ -95,7 +95,7 @@ Visit http://localhost:3000 to see the application.
 - `/feedback/{roomId}` - Customer feedback form
 - `/admin/dashboard` - Admin dashboard (if configured)
 
-## 🛠️ Development
+## Development
 
 ### Build for Production
 
@@ -117,7 +117,7 @@ pnpm lint
 pnpm format
 ```
 
-## 🎨 Tech Stack
+## Tech Stack
 
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
@@ -128,7 +128,7 @@ pnpm format
 - **State Management**: React Hooks
 - **HTTP Client**: Fetch API
 
-## 🔧 Configuration Files
+## Configuration Files
 
 - `next.config.ts` - Next.js configuration
 - `tailwind.config.ts` - TailwindCSS configuration
@@ -137,7 +137,7 @@ pnpm format
 - `.eslintrc.json` - ESLint rules
 - `.prettierrc` - Prettier formatting rules
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Port Already in Use
 ```bash
@@ -164,7 +164,7 @@ lsof -ti:3000 | xargs kill -9
 - Ensure backend is running on port 8000
 - Check CORS settings in backend
 
-## 📊 Available Scripts
+## Available Scripts
 
 ```bash
 pnpm dev          # Start development server
@@ -174,7 +174,7 @@ pnpm lint         # Run ESLint
 pnpm format       # Format code with Prettier
 ```
 
-## 🔒 Security Notes
+## Security Notes
 
 - Never commit `.env.local` files
 - Use `NEXT_PUBLIC_` prefix only for non-sensitive client-side variables
@@ -182,7 +182,7 @@ pnpm format       # Format code with Prettier
 - Enable CSRF protection for forms
 - Validate all user inputs
 
-## 🌐 Deployment
+## Deployment
 
 ### Vercel (Recommended)
 1. Push code to GitHub
