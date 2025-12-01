@@ -1,12 +1,7 @@
+import json
 from dotenv import load_dotenv
 
-# The project expects the LiveKit "agents" package. Different distributions
-# expose the agents API under slightly different top-level package names
-# (for example `livekit.agents` vs a separate `livekit_agents` package). To
-# make the runtime error actionable and robust across environments we try a
-# couple of fallbacks and raise a clear error with an installation hint.
 try:
-  # Preferred API used by the example code
   from livekit import agents  # type: ignore
   from livekit.agents import AgentSession, Agent, RoomInputOptions  # type: ignore
   from livekit.plugins import deepgram, noise_cancellation  # type: ignore
@@ -35,9 +30,7 @@ except Exception as _err:  # pragma: no cover - environment dependent
 # Load environment variables
 load_dotenv(".env")
 
-class Assistant(Agent):  # type: ignore
-    def __init__(self) -> None:
-        super().__init__(instructions="""
+SYSTEM_INSTRUCTIONS = """
 You are a professional **AI-powered voice sales assistant** for a bookstore with advanced capabilities:
 
 ## 🚨 **CRITICAL RULE: NO RECOMMENDATIONS WITHOUT USER INPUT**
@@ -229,36 +222,71 @@ You are a professional **AI-powered voice sales assistant** for a bookstore with
 7. **Test yourself:** Before recommending, ask "Did THIS user tell me about this preference?" If no, ask them first!
 
 Remember: You're a **personalized** book consultant with **perfect memory** of what THIS specific customer told you. Every recommendation must reflect THEIR unique conversation, preferences, and needs - not generic bestseller lists!
-""")
+"""
+
+class Assistant(Agent):  # type: ignore
+    def __init__(self, user_context: dict = None) -> None:
+        user_context = user_context or {}
+        name = user_context.get("name")
+        email = user_context.get("email")
+        
+        context_instruction = ""
+        if name or email:
+            context_instruction += "\n\n## **User Context**\n"
+            if name:
+                context_instruction += f"- **User Name:** {name}\n"
+            if email:
+                context_instruction += f"- **User Email:** {email}\n"
+            
+            context_instruction += "\n**Personalization Rules:**\n"
+            if name:
+                context_instruction += f"- **Greeting Rule:** Address the user by their name '{name}' to build rapport.\n"
+            if email:
+                context_instruction += "- **Email Verification:** You can use the user's email for order confirmation if needed.\n"
+
+        super().__init__(instructions=SYSTEM_INSTRUCTIONS + context_instruction)
 
 async def entrypoint(ctx: agents.JobContext):  # type: ignore
+    # Parse metadata to get user info
+    metadata = {}
+    try:
+        if ctx.room.metadata:
+            metadata = json.loads(ctx.room.metadata)
+    except Exception:
+        pass
+    
+    # Extract user info
+    user_name = metadata.get('userName') or metadata.get('name')
+    user_email = metadata.get('userEmail') or metadata.get('email')
+    
+    # If no name but email exists, try to extract name from email
+    if not user_name and user_email:
+        user_name = user_email.split('@')[0]
+        
+    user_context = {"name": user_name, "email": user_email}
+
     session = AgentSession(  # type: ignore
-        # Speech-to-Text
+        
         stt=deepgram.STT(model="nova-3", language="multi"),  # type: ignore
 
-        # Google Gemini LLM
         llm=LLM(model="gemini-2.0-flash"),  # type: ignore
 
-        # Text-to-Speech
         tts=deepgram.TTS(model="aura-asteria-en"),  # type: ignore
     )
 
     await session.start(  # type: ignore
         room=ctx.room,  # type: ignore
-        agent=Assistant(),
+        agent=Assistant(user_context=user_context),
         room_input_options=RoomInputOptions(  # type: ignore
-            # Noise cancellation
             noise_cancellation=noise_cancellation.BVC(),  # type: ignore
         ),
     )
 
-    # Initial greeting - check if user name is available in room metadata
-    user_name = ctx.room.metadata.get('userName', '') if hasattr(ctx.room, 'metadata') and ctx.room.metadata else ''  # type: ignore
-    
+    # Initial greeting
     if user_name:
-        greeting_instruction = f"Greet the user warmly by their name '{user_name}' and ask them what type of books they're interested in today. DO NOT recommend any books yet - focus on discovering THEIR preferences first. Ask open-ended questions like 'What kind of books do you enjoy?' or 'What are you in the mood to read?'"
+        greeting_instruction = f"Greet the user warmly by their name '{user_name}' and ask them what type of books they're interested in today. DO NOT recommend any books yet - focus on discovering THEIR preferences first."
     else:
-        greeting_instruction = "Greet the user warmly, ask for their name, and then ask what type of books they're interested in. DO NOT recommend any books yet - focus on discovering THEIR preferences first. Start a conversation to learn about their reading interests."
+        greeting_instruction = "Greet the user warmly, ask for their name, and then ask what type of books they're interested in. DO NOT recommend any books yet - focus on discovering THEIR preferences first."
     
     await session.generate_reply(  # type: ignore
         instructions=greeting_instruction
