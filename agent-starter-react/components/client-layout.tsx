@@ -53,62 +53,56 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <>
       {/* Modern Header - Only show for authenticated users */}
+      {/* Modern Header - Only show for authenticated users */}
       {isLoggedIn && (
-        <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 shadow-lg backdrop-blur-md transition-all duration-300 dark:border-gray-800 dark:bg-gray-900/95">
+        <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-xl transition-all duration-300 dark:border-slate-800 dark:bg-slate-900/90">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex h-20 items-center justify-between">
               {/* Logo Section */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 group cursor-pointer">
                 <div className="relative">
-                  <div className="flex h-12 w-12 transform items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 shadow-xl transition-transform duration-200 hover:scale-105">
-                    <span className="text-2xl text-white">🤖</span>
+                  <div className="flex h-10 w-10 transform items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 shadow-lg shadow-purple-500/20 transition-transform duration-200 group-hover:scale-105">
+                    <span className="text-xl text-white">🤖</span>
                   </div>
-                  <div className="absolute -top-1 -right-1 h-4 w-4 animate-pulse rounded-full border-2 border-white bg-green-400"></div>
+                  <div className="absolute -top-1 -right-1 h-3 w-3 animate-pulse rounded-full border-2 border-white dark:border-slate-900 bg-emerald-500"></div>
                 </div>
                 <div>
-                  <h1 className="bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-2xl font-bold text-transparent dark:from-white dark:to-gray-300">
+                  <h1 className="text-lg font-bold leading-none tracking-tight text-slate-900 dark:text-white">
                     BookWise
                   </h1>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Intelligent Sales Assistant</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Intelligent Sales Assistant</p>
                 </div>
               </div>
 
               {/* Navigation */}
-              <nav className="hidden items-center space-x-1 md:flex">
-                <Link
-                  href="/"
-                  className="rounded-xl px-4 py-2 font-medium text-gray-700 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-orange-400"
-                >
-                  Home
-                </Link>
-                <a
-                  href="#"
-                  className="rounded-xl px-4 py-2 font-medium text-gray-700 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600"
-                >
-                  Books
-                </a>
-                <a
-                  href="#"
-                  className="rounded-xl px-4 py-2 font-medium text-gray-700 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600"
-                >
-                  Consultation
-                </a>
-                <a
-                  href="/contact"
-                  className="rounded-xl px-4 py-2 font-medium text-gray-700 transition-all duration-200 hover:bg-orange-50 hover:text-orange-600"
-                >
-                  Support
-                </a>
+              <nav className="hidden items-center gap-1 md:flex">
+                {[
+                  { label: 'Home', href: '/' },
+                  { label: 'Books', href: '#' },
+                  { label: 'Consultation', href: '#' },
+                  { label: 'Support', href: '/contact' },
+                ].map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="group relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
               </nav>
 
               {/* Right Section */}
               <div className="flex items-center gap-3">
-                <ThemeToggle />
-                <AuthButton />
-                <div className="hidden items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 sm:flex dark:bg-gray-800">
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Online</span>
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50/50 border border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900/30">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Online</span>
                 </div>
+                <ThemeToggle className="scale-90" />
+                <AuthButton />
               </div>
             </div>
           </div>

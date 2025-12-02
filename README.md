@@ -2,10 +2,19 @@
 
 A comprehensive AI-powered sales assistant system that enables voice-based book consultations with real-time transcription, order processing, and admin management capabilities.
 
-> **Quick Links to Component Documentation:**
-> - [Backend README](./backend/README.md) - FastAPI server setup & API docs
-> - [Agent README](./agent/README.md) - Voice AI agent configuration
-> - [Frontend README](./agent-starter-react/README.md) - Next.js app setup
+## Getting Started
+
+**New to the project?** Follow these steps:
+
+1. **Read the Overview** - Understand the architecture and features above
+2. **Setup Environment** - Configure API keys using the [Environment Setup](#environment-setup) guide
+3. **Quick Start** - Run the automated setup script or follow manual setup
+4. **Component Docs** - Dive into individual component READMEs for detailed information:
+   - [Backend README](./backend/README.md) - API endpoints, database setup, testing
+   - [Agent README](./agent/README.md) - Voice AI configuration, model selection
+   - [Frontend README](./agent-starter-react/README.md) - UI components, pages, deployment
+5. **Access Application** - Visit http://localhost:3000 and start using the AI assistant!
+
 
 ## Table of Contents
 
@@ -350,18 +359,5 @@ For support and questions:
 - Contact: meegadavamsi76@gmail.com
 
 ---
-
-## Getting Started
-
-**New to the project?** Follow these steps:
-
-1. **Read the Overview** - Understand the architecture and features above
-2. **Setup Environment** - Configure API keys using the [Environment Setup](#environment-setup) guide
-3. **Quick Start** - Run the automated setup script or follow manual setup
-4. **Component Docs** - Dive into individual component READMEs for detailed information:
-   - [Backend README](./backend/README.md) - API endpoints, database setup, testing
-   - [Agent README](./agent/README.md) - Voice AI configuration, model selection
-   - [Frontend README](./agent-starter-react/README.md) - UI components, pages, deployment
-5. **Access Application** - Visit http://localhost:3000 and start using the AI assistant!
 
 **Happy coding!**

@@ -390,14 +390,32 @@ export const SessionView = ({
                   message.from?.identity === localParticipant?.identity ||
                   message.from?.sid === localParticipant?.sid ||
                   message.from?.isLocal === true;
+
+                // If message is from local participant, it's always a user message
+                // Otherwise, check if it's from an agent
                 const isAgentParticipant =
                   message.from?.isAgent === true ||
                   fromIdentity.toLowerCase().includes('agent') ||
                   fromIdentity.toLowerCase().includes('assistant') ||
                   fromName.toLowerCase().includes('agent') ||
                   fromName.toLowerCase().includes('assistant');
-                const isAgentMessage = Boolean(isAgentParticipant) && !fromLocalParticipant;
+
+                // Message is from agent only if it's from agent participant AND not from local user
+                const isAgentMessage = !fromLocalParticipant && Boolean(isAgentParticipant);
                 const speakerName = isAgentMessage ? 'BookWise AI' : 'You';
+
+                // Debug logging
+                console.log('Message Debug:', {
+                  text: message.message.substring(0, 30),
+                  fromIdentity,
+                  fromName,
+                  localIdentity: localParticipant?.identity,
+                  fromLocalParticipant,
+                  isAgentParticipant,
+                  isAgentMessage,
+                  isLocal: message.from?.isLocal,
+                  isAgent: message.from?.isAgent,
+                });
 
                 return (
                   <motion.div

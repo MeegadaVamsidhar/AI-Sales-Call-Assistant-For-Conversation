@@ -20,17 +20,73 @@ export function transcriptionToChatMessage(
   textStream: TextStreamData,
   room: Room
 ): ReceivedChatMessage {
-  return {
-    id: textStream.streamInfo.id,
-    timestamp: textStream.streamInfo.timestamp,
-    message: textStream.text,
-    from:
-      textStream.participantInfo.identity === room.localParticipant.identity
-        ? room.localParticipant
-        : Array.from(room.remoteParticipants.values()).find(
-            (p) => p.identity === textStream.participantInfo.identity
-          ),
-  };
+  try {
+    console.log('Transcription Debug - FULL STREAM INFO:', {
+      text: textStream.text.substring(0, 50),
+      participantInfo: textStream.participantInfo,
+      streamInfo: textStream.streamInfo,
+      localIdentity: room.localParticipant.identity,
+    });
+
+    // Get all track information for debugging
+    const localAudioTracks = Array.from(room.localParticipant.audioTrackPublications.values());
+    const remoteAudioTracks = Array.from(room.remoteParticipants.values()).flatMap(p =>
+      Array.from(p.audioTrackPublications.values())
+    );
+
+    console.log('Track Debug:', {
+      localAudioTracks: localAudioTracks.map(t => ({ sid: t.trackSid, name: t.trackName })),
+      remoteAudioTracks: remoteAudioTracks.map(t => ({ sid: t.trackSid, name: t.trackName })),
+      transcriptionTrackSid: textStream.streamInfo.trackSid,
+    });
+
+    // Check if transcription is from local participant by identity
+    const isFromLocalParticipant =
+      textStream.participantInfo.identity === room.localParticipant.identity;
+
+    // Check if the trackSid matches any of the local participant's audio tracks
+    const isLocalAudio = localAudioTracks.some(track =>
+      track.trackSid === textStream.streamInfo.trackSid
+    ) ?? false;
+
+    // In voice assistants, the agent transcribes user speech, so we need to check
+    // if the track being transcribed belongs to the local user
+    const fromLocal = isFromLocalParticipant || isLocalAudio;
+
+    // Find the correct participant to attribute the message to
+    const fromParticipant = fromLocal
+      ? room.localParticipant
+      : Array.from(room.remoteParticipants.values()).find(
+        (p) => p.identity === textStream.participantInfo.identity
+      );
+
+    console.log('Transcription Debug - DECISION:', {
+      text: textStream.text.substring(0, 30),
+      isFromLocalParticipant,
+      isLocalAudio,
+      fromLocal,
+      attributedTo: fromParticipant?.identity,
+      shouldBeUser: fromLocal,
+    });
+
+    return {
+      id: textStream.streamInfo.id,
+      timestamp: textStream.streamInfo.timestamp,
+      message: textStream.text,
+      from: fromParticipant,
+    };
+  } catch (error) {
+    console.error('Error in transcriptionToChatMessage:', error);
+    // Fallback - return with participant from textStream info
+    return {
+      id: textStream.streamInfo.id,
+      timestamp: textStream.streamInfo.timestamp,
+      message: textStream.text,
+      from: Array.from(room.remoteParticipants.values()).find(
+        (p) => p.identity === textStream.participantInfo.identity
+      ) || room.localParticipant,
+    };
+  }
 }
 
 // https://react.dev/reference/react/cache#caveats
